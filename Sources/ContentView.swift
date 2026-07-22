@@ -1024,7 +1024,7 @@ struct ContentView: View {
         for window: NSWindow,
         resolver: WindowContentOverlayTargetResolver
     ) -> NSView? {
-        window.contentView
+        resolver.installationTarget(for: window)?.reference
     }
 
     static func tmuxWorkspacePaneExactRect(

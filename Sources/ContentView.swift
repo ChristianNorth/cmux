@@ -3258,6 +3258,7 @@ struct ContentView: View {
             clampSidebarWidthIfNeeded(availableWidth: availableWidth)
             clampRightSidebarWidthIfNeeded(availableWidth: availableWidth)
             updateSidebarResizerBandState()
+            scheduleTmuxWorkspacePaneWindowOverlayGeometryRefresh(in: window)
         })
 
         view = AnyView(view.onChange(of: rightSidebarMaxWidthSetting) { _, _ in

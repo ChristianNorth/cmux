@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 
@@ -31,5 +32,29 @@ struct TmuxWorkspacePaneOverlayModelTests {
 
         #expect(model.activePaneBorderRect == nil)
         #expect(model.activePaneBorderColorHex == nil)
+    }
+
+    @Test @MainActor
+    func refreshesGeometryAfterWindowResize() async {
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 640, height: 400),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        let controller = WindowTmuxWorkspacePaneOverlayController(window: window)
+        var geometryReadCount = 0
+
+        controller.scheduleGeometryRefresh {
+            geometryReadCount += 1
+            return nil
+        }
+        await Task.yield()
+        #expect(geometryReadCount == 1)
+
+        NotificationCenter.default.post(name: NSWindow.didResizeNotification, object: window)
+        await Task.yield()
+
+        #expect(geometryReadCount == 2)
     }
 }

@@ -21,6 +21,10 @@ on:
         description: "Run specific UI test class (e.g. UpdatePillUITests) or empty for all"
         required: false
         default: ""
+      unit_test_filter:
+        description: "Run one unit test suite (e.g. cmuxTests/PaneChromeSettingsTests) or empty for all"
+        required: false
+        default: ""
       test_timeout:
         description: "Per-test timeout in seconds (default: 120)"
         required: false
@@ -135,12 +139,17 @@ jobs:
         run: |
           set -euo pipefail
           SOURCE_PACKAGES_DIR="$PWD/.ci-source-packages"
+          UNIT_TEST_FILTER="${{ inputs.unit_test_filter }}"
           run_unit_tests() {
+            local -a filter_args=()
+            if [ -n "$UNIT_TEST_FILTER" ]; then
+              filter_args+=("-only-testing:$UNIT_TEST_FILTER")
+            fi
             scripts/ci/xcodebuild_noninteractive.py \
               xcodebuild -project cmux.xcodeproj -scheme cmux-unit -configuration Debug \
               -clonedSourcePackagesDirPath "$SOURCE_PACKAGES_DIR" \
               -disableAutomaticPackageResolution \
-              -destination "platform=macOS" test 2>&1
+              -destination "platform=macOS" "${filter_args[@]}" test 2>&1
           }
 
           set +e

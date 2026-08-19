@@ -185,11 +185,15 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
             let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
             let restoredInput = restoredPanel.surface.debugInitialInputMetadata()
 
-            XCTAssertTrue(restoredInput.hasInitialInput)
-            XCTAssertGreaterThan(restoredInput.byteCount, 0)
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: ["'resume'", "codex-running-at-snapshot-session"]
+            XCTAssertFalse(
+                restoredInput.hasInitialInput,
+                "local auto-resume must not type into an interactive shell"
+            )
+            XCTAssertEqual(restoredInput.byteCount, 0)
+            let restoredCommand = try XCTUnwrap(restoredPanel.surface.debugInitialCommand())
+            XCTAssertTrue(
+                restoredCommand.contains("cmux restore --surface \"$CMUX_SURFACE_ID\""),
+                restoredCommand
             )
             XCTAssertEqual(
                 restored.restoredAgentResumeStatesByPanelId[restoredPanelId],

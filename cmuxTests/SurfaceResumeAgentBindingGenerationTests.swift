@@ -60,8 +60,13 @@ struct SurfaceResumeAgentBindingGenerationTests {
             restored.restoreSessionSnapshot(snapshot)
             let restoredPanelID = try #require(restored.focusedPanelId)
             let restoredPanel = try #require(restored.terminalPanel(for: restoredPanelID))
-            #expect(restoredPanel.surface.debugInitialCommand() == nil)
-            #expect(restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
+            #expect(
+                restoredPanel.surface.debugInitialCommand()
+                    == AgentRestoreTerminalStartupCommand.command(
+                        for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                    )
+            )
+            #expect(!restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
         }
     }
 
@@ -94,7 +99,7 @@ struct SurfaceResumeAgentBindingGenerationTests {
             let sourcePanelID = try #require(source.focusedPanelId)
             let sessionID = "a22293b7-bcef-4707-8439-2f538c8517a4"
             let expectedRestoreInput =
-                " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex \(sessionID)\n"
+                AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
             source.updatePanelShellActivityState(panelId: sourcePanelID, state: .commandRunning)
             source.recordAgentPID(
                 key: "codex.\(sessionID)",
@@ -122,7 +127,7 @@ struct SurfaceResumeAgentBindingGenerationTests {
             let firstPanelID = try #require(firstRestore.focusedPanelId)
             #expect(
                 firstRestore.restoredAgentResumeStatesByPanelId[firstPanelID]
-                    == .awaitingAutoResumeCommand
+                    == .autoResumeCommandRunning
             )
             let queuedLaunchSnapshot = firstRestore.sessionSnapshot(
                 includeScrollback: false,
@@ -166,7 +171,7 @@ struct SurfaceResumeAgentBindingGenerationTests {
             let secondPanelID = try #require(secondRestore.focusedPanelId)
             #expect(
                 secondRestore.restoredAgentResumeStatesByPanelId[secondPanelID]
-                    == .awaitingAutoResumeCommand
+                    == .autoResumeCommandRunning
             )
             secondRestore.updatePanelShellActivityState(panelId: secondPanelID, state: .commandRunning)
 
@@ -199,7 +204,7 @@ struct SurfaceResumeAgentBindingGenerationTests {
         let sourcePanelID = try #require(source.focusedPanelId)
         let sessionID = "019fbf20-689d-76f3-8e7f-1220929e8140"
         let expectedRestoreInput =
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore grok \(sessionID)\n"
+            AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         let sourceBinding = grokBinding(sessionID: sessionID)
         #expect(source.setSurfaceResumeBinding(sourceBinding, panelId: sourcePanelID))
         source.updatePanelShellActivityState(panelId: sourcePanelID, state: .commandRunning)
@@ -226,8 +231,14 @@ struct SurfaceResumeAgentBindingGenerationTests {
         firstRestore.restoreSessionSnapshot(sourceSnapshot)
         let firstPanelID = try #require(firstRestore.focusedPanelId)
         let firstPanel = try #require(firstRestore.terminalPanel(for: firstPanelID))
-        #expect(firstPanel.surface.debugInitialInputForTesting() == expectedRestoreInput)
-        #expect(firstRestore.restoredAgentResumeStatesByPanelId[firstPanelID] == .awaitingAutoResumeCommand)
+        #expect(
+            firstPanel.surface.debugInitialCommand()
+                == AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
+        )
+        #expect(firstPanel.surface.debugInitialInputForTesting() == nil)
+        #expect(firstRestore.restoredAgentResumeStatesByPanelId[firstPanelID] == .autoResumeCommandRunning)
 
         firstRestore.updatePanelShellActivityState(panelId: firstPanelID, state: .commandRunning)
         #expect(firstRestore.setSurfaceResumeBinding(
@@ -251,9 +262,13 @@ struct SurfaceResumeAgentBindingGenerationTests {
         secondRestore.restoreSessionSnapshot(secondGenerationSnapshot)
         let secondPanelID = try #require(secondRestore.focusedPanelId)
         let secondPanel = try #require(secondRestore.terminalPanel(for: secondPanelID))
-        let secondRestoreInput = try #require(secondPanel.surface.debugInitialInputForTesting())
-        #expect(secondRestoreInput == expectedRestoreInput)
-        #expect(!secondRestoreInput.contains("grok -r"))
+        #expect(
+            secondPanel.surface.debugInitialCommand()
+                == AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
+        )
+        #expect(secondPanel.surface.debugInitialInputForTesting() == nil)
     }
 
     @Test("A replacement binding cannot inherit restored-command liveness")

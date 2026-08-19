@@ -62,20 +62,7 @@ extension SurfaceResumeBindingSnapshot {
     }
 
     private var localRestoreCLIInput: String {
-        let executable = AgentRestoreLaunch.cliStartupExecutableToken
-        if let kind = Self.restoreCLIArgument(kind),
-           let checkpointId = Self.restoreCLIArgument(checkpointId) {
-            return " \(executable) restore \(kind) \(checkpointId)\n"
-        }
-        return " \(executable) restore --surface\n"
-    }
-
-    private static func restoreCLIArgument(_ value: String?) -> String? {
-        guard let value = value?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !value.isEmpty else {
-            return nil
-        }
-        return AgentRestoreCLIArgument(rawValue: value)?.rawValue
+        AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
     }
 
     private func resolvedStartupCommand(repairPortableAgentExecutable: Bool) -> String {

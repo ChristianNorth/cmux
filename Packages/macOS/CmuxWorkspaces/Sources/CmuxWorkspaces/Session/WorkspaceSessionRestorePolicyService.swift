@@ -93,7 +93,7 @@ public struct WorkspaceSessionRestorePolicyService<Binding: WorkspaceSurfaceResu
         return effectiveBinding.restoreStartupInput()
     }
 
-    /// Returns post-start input for a restored surface resume binding.
+    /// Returns startup work for a restored surface resume binding.
     public func surfaceResumeStartupLaunch(
         _ resumeBinding: Binding?,
         autoResumeAgentSessions: Bool,
@@ -115,12 +115,15 @@ public struct WorkspaceSessionRestorePolicyService<Binding: WorkspaceSurfaceResu
         )
     }
 
-    /// Returns post-start input for an already approved binding.
+    /// Returns startup work for an already approved binding.
     public func surfaceResumeStartupLaunch(
         forApprovedBinding effectiveBinding: Binding
     ) -> WorkspaceSurfaceResumeStartupLaunch? {
         guard let input = effectiveBinding.restoreStartupInput() else {
             return nil
+        }
+        if effectiveBinding.usesLocalRestoreVerb {
+            return .command(input)
         }
         return .input(input)
     }

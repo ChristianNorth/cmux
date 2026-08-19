@@ -1,3 +1,4 @@
+import CMUXAgentLaunch
 import Foundation
 import Testing
 @_implementationOnly import XCTest
@@ -218,16 +219,13 @@ struct KimiResumeReviewRegressionTests {
         restored.restoreSessionSnapshot(persisted)
         let restoredPanelID = try #require(restored.focusedPanelId)
         let restoredPanel = try #require(restored.terminalPanel(for: restoredPanelID))
-        #expect(restoredPanel.surface.debugInitialCommand() == nil)
-        let launcherInput = try #require(restoredPanel.surface.debugInitialInputForTesting())
-        let launcherWords = TerminalStartupWorkingDirectoryPrefix
-            .shellWordRanges(launcherInput)
-            .map(\.value)
-        let launcherIndex = try #require(launcherWords.lastIndex(of: "/bin/zsh"))
-        let launcherPath = try #require(launcherWords.dropFirst(launcherIndex + 1).first)
-        let launcher = try String(contentsOfFile: launcherPath, encoding: .utf8)
-        #expect(launcher.contains("'custom-kimi' '--resume' '\(sessionID)'"), "\(launcher)")
-        #expect(!launcher.contains("'kimi' '--resume' '\(sessionID)'"), "\(launcher)")
+        #expect(
+            restoredPanel.surface.debugInitialCommand()
+                == AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
+        )
+        #expect(restoredPanel.surface.debugInitialInputForTesting() == nil)
     }
 }
 

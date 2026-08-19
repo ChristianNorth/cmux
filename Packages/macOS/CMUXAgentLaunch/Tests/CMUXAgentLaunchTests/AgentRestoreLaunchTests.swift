@@ -51,6 +51,55 @@ import Testing
         #expect(AgentRestoreLaunch.cliStartupExecutableToken == "cmux")
     }
 
+    @Test func terminalStartupCommandRestoresTheExplicitSurfaceThenReturnsToTheLoginShell() throws {
+        let command = try #require(AgentRestoreTerminalStartupCommand.command(
+            for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+        ))
+
+        #expect(command.hasPrefix("/usr/bin/env /bin/zsh -fic "))
+        #expect(command.contains("cmux restore --surface"))
+        #expect(command.contains("$CMUX_SURFACE_ID"))
+        #expect(command.contains("exec -l"))
+        #expect(command.contains("resume \(sessionID)") == false)
+
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("cmux-agent-restore-startup-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let captureURL = root.appendingPathComponent("capture.txt")
+        let cmuxURL = root.appendingPathComponent("cmux")
+        let loginShellURL = root.appendingPathComponent("login-shell")
+        try "#!/bin/sh\nprintf '%s\\n' \"$*\" > \"$CMUX_TEST_CAPTURE\"\n"
+            .write(to: cmuxURL, atomically: true, encoding: .utf8)
+        try "#!/bin/sh\nprintf '%s\\n' 'login-shell' >> \"$CMUX_TEST_CAPTURE\"\n"
+            .write(to: loginShellURL, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: cmuxURL.path)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: loginShellURL.path)
+
+        let surfaceID = UUID().uuidString
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+        process.arguments = ["-fc", command]
+        process.environment = [
+            "CMUX_SURFACE_ID": surfaceID,
+            "CMUX_TEST_CAPTURE": captureURL.path,
+            "PATH": "\(root.path):/usr/bin:/bin",
+            "SHELL": loginShellURL.path,
+        ]
+        try process.run()
+        process.waitUntilExit()
+
+        #expect(process.terminationStatus == 0)
+        let capture = try String(contentsOf: captureURL, encoding: .utf8)
+        #expect(capture == "restore --surface \(surfaceID)\nlogin-shell\n")
+    }
+
+    @Test func terminalStartupCommandRejectsPersistedShellCommands() {
+        #expect(AgentRestoreTerminalStartupCommand.command(for: "rm -rf /tmp/example") == nil)
+        #expect(AgentRestoreTerminalStartupCommand.command(for: "cmux restore codex \(sessionID)") == nil)
+    }
+
     @Test func structuredCodexRestorePlansDirectArgvEnvironmentAndCwd() throws {
         let workingDirectory = "/tmp/项目 with 'quotes'"
         let capturedWorkingDirectory = "/tmp/old project"

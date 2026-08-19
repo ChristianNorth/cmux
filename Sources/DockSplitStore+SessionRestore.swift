@@ -215,9 +215,12 @@ extension DockSplitStore {
             && !agentSessionAlreadyActive
             ? restorableAgent?.resumeStartupInput(
                 restoringWorkingDirectory: resumeSessionWorkingDirectory
-            ).map(WorkspaceSurfaceResumeStartupLaunch.input)
+            ).map(WorkspaceSurfaceResumeStartupLaunch.command)
             : nil
-        let initialCommand = tmuxLauncher
+        let localAgentRestoreStartupCommand = (
+            bindingLaunch?.initialCommand ?? agentLaunch?.initialCommand
+        ).flatMap(AgentRestoreTerminalStartupCommand.command)
+        let initialCommand = tmuxLauncher ?? localAgentRestoreStartupCommand
         let initialInput = bindingLaunch?.initialInput ?? agentLaunch?.initialInput
         let startupHandlesWorkingDirectory =
             tmuxLauncher != nil || agentLaunch != nil || bindingLaunch != nil
@@ -237,16 +240,22 @@ extension DockSplitStore {
         let reusableSurfaceId = GhosttyApp.terminalSurfaceRegistry.surface(id: snapshot.id) == nil
             ? snapshot.id
             : UUID()
+        var terminalConfig = TerminalFontSizeCreationPolicy.sessionRestore(
+            overrideBasePoints: terminalSnapshot.fontSize,
+            representedChangeTokens: Set(
+                terminalSnapshot.fontSizeChangeTokens ?? []
+            )
+        ).applying(to: nil)
+        if localAgentRestoreStartupCommand != nil {
+            var template = terminalConfig ?? CmuxSurfaceConfigTemplate()
+            template.waitAfterCommand = false
+            terminalConfig = template
+        }
         let terminal = TerminalPanel(
             id: reusableSurfaceId,
             workspaceId: workspaceId,
             context: GHOSTTY_SURFACE_CONTEXT_SPLIT,
-            configTemplate: TerminalFontSizeCreationPolicy.sessionRestore(
-                overrideBasePoints: terminalSnapshot.fontSize,
-                representedChangeTokens: Set(
-                    terminalSnapshot.fontSizeChangeTokens ?? []
-                )
-            ).applying(to: nil),
+            configTemplate: terminalConfig,
             // Start the owning shell in the resume cwd when it is currently
             // enterable so exiting the child launcher preserves #7031. The
             // launcher still owns the authoritative guard for missing,
@@ -285,7 +294,9 @@ extension DockSplitStore {
         if let restoredScrollback {
             restoredTerminalScrollbackByPanelId[terminal.id] = restoredScrollback
         }
-        let willRunAgentCommand = false
+        let willRunAgentCommand = localAgentRestoreStartupCommand != nil && (
+            restorableAgent != nil || resumeBinding?.isAgentHookBinding == true
+        )
         let willRunAgentInput =
             agentLaunch?.initialInput != nil ||
             (bindingLaunch?.initialInput != nil && resumeBinding?.isAgentHookBinding == true)

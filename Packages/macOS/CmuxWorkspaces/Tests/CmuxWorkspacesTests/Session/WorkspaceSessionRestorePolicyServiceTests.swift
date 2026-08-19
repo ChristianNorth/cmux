@@ -180,14 +180,15 @@ struct WorkspaceSessionRestorePolicyServiceTests {
         ) == "input:claude --resume")
     }
 
-    @Test("post-start launch uses the binding restore input")
-    func postStartLaunchUsesBindingRestoreInput() throws {
+    @Test("local launch uses the binding restore command")
+    func localLaunchUsesBindingRestoreCommand() throws {
         let service = makeService()
         let launch = try #require(service.surfaceResumeStartupLaunch(
             forApprovedBinding: FakeBinding()
         ))
 
-        #expect(launch.initialInput == "input:echo ok")
+        #expect(launch.initialCommand == "input:echo ok")
+        #expect(launch.initialInput == nil)
     }
 
     @Test("Hermes agent bindings receive Codex bootstrap and provider rewrite")
@@ -214,8 +215,9 @@ struct WorkspaceSessionRestorePolicyServiceTests {
             autoResumeAgentSessions: true,
             approvalStoreURL: URL(fileURLWithPath: "/tmp/cmux-approvals.json", isDirectory: false)
         ))
-        let input = launch.initialInput
+        let input = try #require(launch.initialInput)
 
+        #expect(launch.initialCommand == nil)
         #expect(input.hasPrefix("input:cd /repo && "))
         #expect(input.contains("'hermes' config set model.provider 'codex' >/dev/null"))
         #expect(input.contains("'hermes' config set model.base_url 'https://codex.example.test' >/dev/null"))
@@ -243,8 +245,9 @@ struct WorkspaceSessionRestorePolicyServiceTests {
             approvalStoreURL: URL(fileURLWithPath: "/tmp/cmux-approvals.json")
         ))
 
-        #expect(launch.initialInput == "input:\(command)")
-        #expect(launch.initialInput.contains("config set") == false)
+        #expect(launch.initialCommand == "input:\(command)")
+        #expect(launch.initialCommand?.contains("config set") == false)
+        #expect(launch.initialInput == nil)
     }
 
     @Test("compatibility-shell preparation refreshes local legacy Hermes bindings")

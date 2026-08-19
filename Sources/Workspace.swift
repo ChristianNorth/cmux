@@ -1477,7 +1477,7 @@ extension Workspace {
                     } else {
                         restorableAgent?.resumeStartupInput(
                             restoringWorkingDirectory: resumeSessionWorkingDirectory
-                        ).map(SurfaceResumeStartupLaunch.input)
+                        ).map(SurfaceResumeStartupLaunch.command)
                     }
                 } else {
                     nil
@@ -1523,9 +1523,14 @@ extension Workspace {
                     remoteCommand: restoredPersistentSSHResumeCommand
                 )
             }
+            let localAgentRestoreStartupCommand = (
+                restoredBindingLaunch?.initialCommand
+                    ?? restoredAgentResumeLaunch?.initialCommand
+            ).flatMap(AgentRestoreTerminalStartupCommand.command)
             let restoredStartupCommand =
                 restoredRemotePTYAttachCommand
                 ?? restoredTmuxStartupScript
+                ?? localAgentRestoreStartupCommand
             let restoredStartupInput = restoredRemotePTYAttachCommand == nil
                 ? (restoredBindingLaunch?.initialInput ?? restoredAgentResumeLaunch?.initialInput)
                 : nil
@@ -1561,9 +1566,14 @@ extension Workspace {
             }()
             let requestedWorkingDirectory =
                 localWorkingDirectory ?? hostShellWorkingDirectory
-            let restoredAgentWillRunStartupCommand = restorableAgent != nil &&
-                restoredPersistentSSHResumeCommand != nil &&
-                resumeBinding?.isAgentHookBinding == true
+            let restoredAgentWillRunStartupCommand =
+                localAgentRestoreStartupCommand != nil && (
+                    restorableAgent != nil || resumeBinding?.isAgentHookBinding == true
+                ) || (
+                    restorableAgent != nil &&
+                    restoredPersistentSSHResumeCommand != nil &&
+                    resumeBinding?.isAgentHookBinding == true
+                )
             let restoredAgentWillRunStartupInput =
                 restoredAgentResumeLaunch?.initialInput != nil ||
                 (restoredBindingLaunch?.initialInput != nil && resumeBinding?.isAgentHookBinding == true)
@@ -1576,7 +1586,8 @@ extension Workspace {
                     "kind=\(restorableAgent.kind.rawValue) session=\(sessionPreview) " +
                     "hasLaunch=\(restorableAgent.launchCommand == nil ? 0 : 1) " +
                     "launchArgc=\(launchArgc) hasResume=\(restoredAgentResumeLaunch == nil ? 0 : 1) " +
-                    "autoResume=\(autoResumeAgentSessions ? 1 : 0) typedStartup=\(restoredStartupInput == nil ? 0 : 1) " +
+                    "autoResume=\(autoResumeAgentSessions ? 1 : 0) startupCommand=\(restoredStartupCommand == nil ? 0 : 1) " +
+                    "startupInput=\(restoredStartupInput == nil ? 0 : 1) " +
                     "replayScrollback=\(shouldReplayScrollback ? 1 : 0)"
                 )
             }
@@ -1611,6 +1622,7 @@ extension Workspace {
                 initialInput: restoredStartupInput,
                 startupEnvironment: replayEnvironment,
                 runtimeSpawnPolicy: .pacedSessionRestore,
+                waitAfterInitialCommand: localAgentRestoreStartupCommand == nil,
                 remotePTYSessionID: restoredRemotePTYSessionID,
                 suppressWorkspaceRemoteStartupCommand: suppressWorkspaceRemoteStartupCommand,
                 restoredSurfaceId: reusableSurfaceId,
@@ -7758,6 +7770,7 @@ final class Workspace: Identifiable, ObservableObject {
         initialInput: String? = nil,
         startupEnvironment: [String: String] = [:],
         runtimeSpawnPolicy: TerminalSurfaceRuntimeSpawnPolicy = .immediate,
+        waitAfterInitialCommand: Bool = true,
         autoRefreshMetadata: Bool = true,
         preserveFocusWhenUnfocused: Bool = true,
         remotePTYSessionID: String? = nil,
@@ -7777,6 +7790,7 @@ final class Workspace: Identifiable, ObservableObject {
             initialInput: initialInput,
             startupEnvironment: startupEnvironment,
             runtimeSpawnPolicy: runtimeSpawnPolicy,
+            waitAfterInitialCommand: waitAfterInitialCommand,
             autoRefreshMetadata: autoRefreshMetadata,
             preserveFocusWhenUnfocused: preserveFocusWhenUnfocused,
             remotePTYSessionID: remotePTYSessionID,
@@ -7801,6 +7815,7 @@ final class Workspace: Identifiable, ObservableObject {
         initialInput: String? = nil,
         startupEnvironment: [String: String] = [:],
         runtimeSpawnPolicy: TerminalSurfaceRuntimeSpawnPolicy = .immediate,
+        waitAfterInitialCommand: Bool = true,
         autoRefreshMetadata: Bool = true,
         preserveFocusWhenUnfocused: Bool = true,
         remotePTYSessionID: String? = nil,
@@ -7850,6 +7865,7 @@ final class Workspace: Identifiable, ObservableObject {
             initialInput: initialInput,
             startupEnvironment: startupEnvironment,
             runtimeSpawnPolicy: runtimeSpawnPolicy,
+            waitAfterInitialCommand: waitAfterInitialCommand,
             autoRefreshMetadata: autoRefreshMetadata,
             preserveFocusWhenUnfocused: preserveFocusWhenUnfocused,
             remotePTYSessionID: remotePTYSessionID,
@@ -7872,6 +7888,7 @@ final class Workspace: Identifiable, ObservableObject {
         initialInput: String?,
         startupEnvironment: [String: String],
         runtimeSpawnPolicy: TerminalSurfaceRuntimeSpawnPolicy,
+        waitAfterInitialCommand: Bool,
         autoRefreshMetadata: Bool,
         preserveFocusWhenUnfocused: Bool,
         remotePTYSessionID: String?,
@@ -7913,7 +7930,7 @@ final class Workspace: Identifiable, ObservableObject {
         // local login shell.
         if startupCommand != nil {
             var template = inheritedConfig ?? CmuxSurfaceConfigTemplate()
-            template.waitAfterCommand = true
+            template.waitAfterCommand = waitAfterInitialCommand
             inheritedConfig = template
         }
         let fallbackSourcePanelId = workingDirectoryFallbackSourcePanelId

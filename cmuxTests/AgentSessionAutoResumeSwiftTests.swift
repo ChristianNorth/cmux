@@ -1,3 +1,4 @@
+import CMUXAgentLaunch
 import Darwin
 import Foundation
 import CmuxCore
@@ -194,11 +195,7 @@ struct AgentSessionAutoResumeSwiftTests {
             let restoredPanelId = try #require(restored.focusedPanelId)
             let restoredPanel = try #require(restored.terminalPanel(for: restoredPanelId))
 
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: [launchCwd, "--resume", sessionId],
-                scriptDoesNotContain: [runtimeCwd]
-            )
+            assertAgentAutoResumeUsesStartupCommand(restoredPanel)
             #expect(
                 restored.sessionSnapshot(includeScrollback: false).panels.first?.terminal?.resumeBinding?.cwd == launchCwd
             )
@@ -1167,11 +1164,7 @@ struct AgentSessionAutoResumeSwiftTests {
             #expect(restoredBinding.command.contains(freshRuntimeCwd), Comment(rawValue: restoredBinding.command))
             #expect(!restoredBinding.command.contains(staleLaunchCwd), Comment(rawValue: restoredBinding.command))
             #expect(restored.sessionSnapshot(includeScrollback: false).panels.first?.terminal?.agent == nil)
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: [freshRuntimeCwd, "--resume", freshSessionId],
-                scriptDoesNotContain: [staleLaunchCwd, staleSessionId]
-            )
+            assertAgentAutoResumeUsesStartupCommand(restoredPanel)
         }
     }
 
@@ -1230,11 +1223,7 @@ struct AgentSessionAutoResumeSwiftTests {
             #expect(restoredTerminal?.agent == nil)
             #expect(restoredBinding.kind == "codex")
             #expect(restoredBinding.checkpointId == codexSessionId)
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: ["codex", "resume", codexSessionId],
-                scriptDoesNotContain: [claudeSessionId, "claude-opus-4-8"]
-            )
+            assertAgentAutoResumeUsesStartupCommand(restoredPanel)
         }
     }
 
@@ -1296,11 +1285,7 @@ struct AgentSessionAutoResumeSwiftTests {
             let restoredPanelId = try #require(restored.focusedPanelId)
             let restoredPanel = try #require(restored.terminalPanel(for: restoredPanelId))
 
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: ["codex", "resume", codexSessionId],
-                scriptDoesNotContain: [claudeSessionId, "claude-opus-4-8"]
-            )
+            assertAgentAutoResumeUsesStartupCommand(restoredPanel)
         }
     }
 
@@ -1480,28 +1465,14 @@ struct AgentSessionAutoResumeSwiftTests {
     }
 
     @MainActor
-    private func assertAgentAutoResumeUsesStartupInput(
-        _ panel: TerminalPanel,
-        scriptContains needles: [String],
-        scriptDoesNotContain excludedNeedles: [String] = []
-    ) throws {
-        #expect(panel.surface.debugInitialCommand() == nil)
-        let input = try #require(panel.surface.debugInitialInputForTesting())
-        let launcherPrefix = "/bin/zsh '"
-        let launcherRange = try #require(input.range(of: launcherPrefix, options: .backwards))
-        let launcherSuffix = input[launcherRange.upperBound...]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        #expect(launcherSuffix.hasSuffix("'"), Comment(rawValue: input))
-        let scriptPath = String(launcherSuffix.dropLast())
-        defer { try? FileManager.default.removeItem(atPath: scriptPath) }
-        let script = try String(contentsOfFile: scriptPath, encoding: .utf8)
-        for needle in needles {
-            #expect(script.contains(needle), Comment(rawValue: script))
-        }
-        for needle in excludedNeedles {
-            #expect(!script.contains(needle), Comment(rawValue: script))
-        }
-        #expect(script.contains("rm -f -- \"$0\""), Comment(rawValue: script))
-        #expect(!script.contains("exec -l"), Comment(rawValue: script))
+    private func assertAgentAutoResumeUsesStartupCommand(_ panel: TerminalPanel) {
+        #expect(panel.surface.debugInitialInputForTesting() == nil)
+        #expect(
+            panel.surface.debugInitialCommand()
+                == AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
+        )
+        #expect(!panel.surface.debugWaitAfterCommand())
     }
 }

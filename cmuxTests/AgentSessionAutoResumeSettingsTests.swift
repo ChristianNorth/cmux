@@ -1,3 +1,4 @@
+import CMUXAgentLaunch
 import Foundation
 import CmuxCore
 import XCTest
@@ -82,12 +83,9 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
         let autoResumePanelId = try XCTUnwrap(restoredWithAutoResume.focusedPanelId)
         let autoResumePanel = try XCTUnwrap(restoredWithAutoResume.terminalPanel(for: autoResumePanelId))
         let autoResumeInput = autoResumePanel.surface.debugInitialInputMetadata()
-        XCTAssertTrue(autoResumeInput.hasInitialInput)
-        XCTAssertGreaterThan(autoResumeInput.byteCount, 0)
-        try assertAgentAutoResumeUsesStartupInput(
-            autoResumePanel,
-            scriptContains: ["'resume'", "codex-auto-resume-disabled-session"]
-        )
+        XCTAssertFalse(autoResumeInput.hasInitialInput)
+        XCTAssertEqual(autoResumeInput.byteCount, 0)
+        try assertLocalResumeUsesStartupCommand(autoResumePanel)
 
         defaults.set(false, forKey: key)
         let restoredWithoutAutoResume = Workspace()
@@ -357,12 +355,9 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
             let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
             let restoredInput = restoredPanel.surface.debugInitialInputMetadata()
 
-            XCTAssertTrue(restoredInput.hasInitialInput)
-            XCTAssertGreaterThan(restoredInput.byteCount, 0)
-            try assertAgentAutoResumeUsesStartupInput(
-                restoredPanel,
-                scriptContains: ["'resume'", "codex-unknown-shell-state-session"]
-            )
+            XCTAssertFalse(restoredInput.hasInitialInput)
+            XCTAssertEqual(restoredInput.byteCount, 0)
+            try assertLocalResumeUsesStartupCommand(restoredPanel)
         }
     }
 
@@ -579,12 +574,9 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
         let restoredPanelId = try XCTUnwrap(restored.focusedPanelId)
         let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
         let input = restoredPanel.surface.debugInitialInputMetadata()
-        XCTAssertTrue(input.hasInitialInput)
-        XCTAssertGreaterThan(input.byteCount, 0)
-        try assertAgentAutoResumeUsesStartupInput(
-            restoredPanel,
-            scriptContains: ["codex resume codex-binding-auto-resume-session"]
-        )
+        XCTAssertFalse(input.hasInitialInput)
+        XCTAssertEqual(input.byteCount, 0)
+        try assertLocalResumeUsesStartupCommand(restoredPanel)
         XCTAssertEqual(
             restored.restoredAgentResumeStatesByPanelId[restoredPanelId],
             .autoResumeCommandRunning
@@ -641,8 +633,8 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
         restored.restoreSessionSnapshot(snapshot)
         let restoredPanelId = try XCTUnwrap(restored.focusedPanelId)
         let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
-        XCTAssertTrue(restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
-        XCTAssertNil(restoredPanel.surface.debugInitialCommand())
+        XCTAssertFalse(restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
+        try assertLocalResumeUsesStartupCommand(restoredPanel)
 
         restored.updatePanelShellActivityState(panelId: restoredPanelId, state: .commandRunning)
         let runningSnapshot = restored.sessionSnapshot(includeScrollback: false)
@@ -704,32 +696,21 @@ final class AgentSessionAutoResumeSettingsTests: XCTestCase {
     }
 
     @MainActor
-    private func assertAgentAutoResumeUsesStartupInput(
+    private func assertLocalResumeUsesStartupCommand(
         _ panel: TerminalPanel,
-        scriptContains needles: [String],
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws {
-        XCTAssertNil(panel.surface.debugInitialCommand(), file: file, line: line)
-        let input = try XCTUnwrap(panel.surface.debugInitialInputForTesting(), file: file, line: line)
-        let launcherPrefix = "/bin/zsh '"
-        let launcherRange = try XCTUnwrap(
-            input.range(of: launcherPrefix, options: .backwards),
-            input,
+        XCTAssertNil(panel.surface.debugInitialInputForTesting(), file: file, line: line)
+        XCTAssertEqual(
+            panel.surface.debugInitialCommand(),
+            AgentRestoreTerminalStartupCommand.command(
+                for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+            ),
             file: file,
             line: line
         )
-        let launcherSuffix = input[launcherRange.upperBound...]
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        XCTAssertTrue(launcherSuffix.hasSuffix("'"), input, file: file, line: line)
-        let scriptPath = String(launcherSuffix.dropLast())
-        defer { try? FileManager.default.removeItem(atPath: scriptPath) }
-        let script = try String(contentsOfFile: scriptPath, encoding: .utf8)
-        for needle in needles {
-            XCTAssertTrue(script.contains(needle), script, file: file, line: line)
-        }
-        XCTAssertTrue(script.contains("rm -f -- \"$0\""), script, file: file, line: line)
-        XCTAssertFalse(script.contains("exec -l"), script, file: file, line: line)
+        XCTAssertFalse(panel.surface.debugWaitAfterCommand(), file: file, line: line)
     }
 
     private func makeRestorableAgentIndex(

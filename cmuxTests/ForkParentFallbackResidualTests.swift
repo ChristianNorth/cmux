@@ -161,7 +161,7 @@ struct ForkParentFallbackResidualTests {
         let resumeInput = try #require(snapshot.resumeStartupInput())
         #expect(
             resumeInput
-                == " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex \(sessionId)\n"
+                == AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
         #expect(snapshot.resumeCommand?.contains("cd -- '\(fixture.cwd.path)'") == true)
         #expect(snapshot.forkStartupInput()?.contains("cd -- '\(fixture.cwd.path)'") == true)

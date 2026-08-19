@@ -74,7 +74,7 @@ import Testing
         #expect(binding.environment == ["LEGACY_VALUE": "preserved"])
         #expect(
             binding.restoreStartupInput()
-                == " \(AgentRestoreLaunch.cliStartupExecutableToken) restore --surface\n"
+                == AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
     }
 
@@ -92,7 +92,7 @@ import Testing
 
         #expect(
             startupInput
-                == " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex \(sessionId)\n"
+                == AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
     }
 
@@ -495,15 +495,17 @@ import Testing
                 .panels.first { $0.customTitle == "Local Resume Shell" }
         )
         let restoredPanel = try #require(restoredWorkspace.terminalPanel(for: restoredLocalPanel.id))
-        #expect(restoredPanel.surface.debugInitialCommand() == nil)
-        let restoredInput = try #require(restoredPanel.surface.debugInitialInputForTesting())
+        let restoredCommand = try #require(restoredPanel.surface.debugInitialCommand())
         #expect(restoredPanel.requestedWorkingDirectory == localDirectory)
         #expect(
-            restoredInput
-                == " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex session-local-resume\n"
+            restoredCommand
+                == AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
         )
-        #expect(!restoredInput.contains(staleExecutablePath))
-        #expect(!restoredInput.contains(oversizedArgument))
+        #expect(restoredPanel.surface.debugInitialInputForTesting() == nil)
+        #expect(!restoredCommand.contains(staleExecutablePath))
+        #expect(!restoredCommand.contains(oversizedArgument))
     }
 
     @Test func agentHookSurfaceResumeStartupInputPreservesExistingPATHManagedAgentExecutable() throws {

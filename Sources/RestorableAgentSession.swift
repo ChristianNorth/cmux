@@ -804,12 +804,7 @@ struct SessionRestorableAgentSnapshot: Codable, Sendable {
         restoringWorkingDirectory: String? = nil
     ) -> String? {
         if useLocalRestoreVerb {
-            let executable = AgentRestoreLaunch.cliStartupExecutableToken
-            guard AgentRestoreCLIArgument(rawValue: kind.rawValue) != nil,
-                  AgentRestoreCLIArgument(rawValue: sessionId) != nil else {
-                return " \(executable) restore --surface\n"
-            }
-            return " \(executable) restore \(kind.rawValue) \(sessionId)\n"
+            return AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         }
         let effectiveWorkingDirectory = resumeWorkingDirectory(
             preferred: restoringWorkingDirectory

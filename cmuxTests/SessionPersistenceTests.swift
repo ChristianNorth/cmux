@@ -2659,7 +2659,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
         let input = try XCTUnwrap(snapshot.resumeStartupInput())
         XCTAssertEqual(
             input,
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex 019dad34-d218-7943-b81a-eddac5c87951\n"
+            AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
         XCTAssertFalse(input.contains(longPath))
         XCTAssertEqual(
@@ -2704,7 +2704,7 @@ final class SocketListenerAcceptPolicyTests: XCTestCase {
 
         XCTAssertEqual(
             snapshot.resumeStartupInput(),
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex 019dad34-d218-7943-b81a-eddac5c87951\n"
+            AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
     }
 
@@ -4516,7 +4516,7 @@ extension SessionPersistenceTests {
         let input = try XCTUnwrap(binding.restoreStartupInput())
         XCTAssertEqual(
             input,
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore --surface\n"
+            AgentRestoreTerminalStartupCommand.surfaceRestoreCommand + "\n"
         )
         XCTAssertFalse(input.contains(longPath))
         XCTAssertEqual(
@@ -6465,7 +6465,13 @@ extension SessionPersistenceTests {
         let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
 
         XCTAssertEqual(restoredPanel.requestedWorkingDirectory, bindingCwd.path)
-        XCTAssertTrue(restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
+        XCTAssertEqual(
+            restoredPanel.surface.debugInitialCommand(),
+            AgentRestoreTerminalStartupCommand.command(
+                for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+            )
+        )
+        XCTAssertFalse(restoredPanel.surface.debugInitialInputMetadata().hasInitialInput)
     }
 
     @MainActor
@@ -6500,14 +6506,17 @@ extension SessionPersistenceTests {
             restored.restoreSessionSnapshot(snapshot)
             let restoredPanelId = try XCTUnwrap(restored.focusedPanelId)
             let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
-            let startupInput = try XCTUnwrap(restoredPanel.surface.debugInitialInputForTesting())
+            let startupCommand = try XCTUnwrap(restoredPanel.surface.debugInitialCommand())
 
             XCTAssertNil(restoredPanel.requestedWorkingDirectory)
             XCTAssertEqual(
-                startupInput,
-                " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex session-duplicate-turn\n"
+                startupCommand,
+                AgentRestoreTerminalStartupCommand.command(
+                    for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+                )
             )
-            XCTAssertFalse(startupInput.contains(missingCwd.path))
+            XCTAssertNil(restoredPanel.surface.debugInitialInputForTesting())
+            XCTAssertFalse(startupCommand.contains(missingCwd.path))
         }
     }
 
@@ -6752,13 +6761,15 @@ extension SessionPersistenceTests {
 
         XCTAssertNil(restoredPanel.surface.debugAdditionalEnvironmentForTesting()["CODEX_HOME"])
         XCTAssertNil(restoredPanel.surface.debugAdditionalEnvironmentForTesting()["EMPTY"])
-        let input = try XCTUnwrap(restoredPanel.surface.debugInitialInputForTesting())
+        let command = try XCTUnwrap(restoredPanel.surface.debugInitialCommand())
         XCTAssertEqual(
-            input,
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex session\n"
+            command,
+            AgentRestoreTerminalStartupCommand.command(
+                for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+            )
         )
-        XCTAssertFalse(input.contains("CODEX_HOME"))
-        XCTAssertNil(launcherScriptPath(from: input))
+        XCTAssertNil(restoredPanel.surface.debugInitialInputForTesting())
+        XCTAssertFalse(command.contains("CODEX_HOME"))
     }
 
     @MainActor
@@ -6792,13 +6803,15 @@ extension SessionPersistenceTests {
         let restoredPanel = try XCTUnwrap(restored.terminalPanel(for: restoredPanelId))
 
         XCTAssertNil(restoredPanel.surface.debugAdditionalEnvironmentForTesting()["CODEX_HOME"])
-        let input = try XCTUnwrap(restoredPanel.surface.debugInitialInputForTesting())
+        let command = try XCTUnwrap(restoredPanel.surface.debugInitialCommand())
         XCTAssertEqual(
-            input,
-            " \(AgentRestoreLaunch.cliStartupExecutableToken) restore codex session\n"
+            command,
+            AgentRestoreTerminalStartupCommand.command(
+                for: AgentRestoreTerminalStartupCommand.surfaceRestoreCommand
+            )
         )
-        XCTAssertFalse(input.contains(longPath))
-        XCTAssertNil(launcherScriptPath(from: input))
+        XCTAssertNil(restoredPanel.surface.debugInitialInputForTesting())
+        XCTAssertFalse(command.contains(longPath))
     }
 
     @MainActor

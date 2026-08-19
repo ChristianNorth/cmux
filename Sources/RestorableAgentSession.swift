@@ -883,6 +883,7 @@ struct RestorableAgentSessionIndex: Sendable {
         let snapshot: SessionRestorableAgentSnapshot
         let lifecycle: AgentHibernationLifecycleState?
         let updatedAt: TimeInterval
+        let hasVerifiedLocalTranscript: Bool
         /// Unlike an empty process ID set, this distinguishes an exited recorded process from no PID evidence.
         let processLiveness: RestorableAgentProcessLiveness
         let processIDs: Set<Int>
@@ -1217,6 +1218,10 @@ struct RestorableAgentSessionIndex: Sendable {
                     snapshot: snapshot,
                     lifecycle: effectiveRecord.agentLifecycle,
                     updatedAt: effectiveRecord.updatedAt,
+                    hasVerifiedLocalTranscript: verifiedLocalTranscriptExists(
+                        for: effectiveRecord,
+                        fileManager: fileManager
+                    ),
                     processLiveness: processObservation.liveness,
                     processIDs: liveProcessID.map { [$0] } ?? [],
                     processIdentities: liveProcessIdentities,
@@ -1296,6 +1301,7 @@ struct RestorableAgentSessionIndex: Sendable {
             )
             return Entry(
                 snapshot: snapshot, lifecycle: lifecycle, updatedAt: updatedAt,
+                hasVerifiedLocalTranscript: false,
                 processLiveness: .running,
                 processIDs: detected.processIDs,
                 processIdentities: processIdentities,
@@ -1419,7 +1425,25 @@ struct RestorableAgentSessionIndex: Sendable {
         if !existing.processIDs.isEmpty && incoming.processIDs.isEmpty {
             return false
         }
+        if existing.snapshot.kind == .codex,
+           incoming.snapshot.kind == .codex,
+           existing.hasVerifiedLocalTranscript != incoming.hasVerifiedLocalTranscript {
+            return incoming.hasVerifiedLocalTranscript
+        }
         return existing.updatedAt <= incoming.updatedAt
+    }
+
+    private static func verifiedLocalTranscriptExists(
+        for record: RestorableAgentHookSessionRecord,
+        fileManager: FileManager
+    ) -> Bool {
+        guard let transcriptPath = normalizedNonEmptyValue(record.transcriptPath) else {
+            return false
+        }
+        return regularNonEmptyFileExists(
+            atPath: (transcriptPath as NSString).expandingTildeInPath,
+            fileManager: fileManager
+        )
     }
 
     private static func normalizedWorkingDirectory(_ rawValue: String?) -> String? {

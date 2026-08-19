@@ -233,6 +233,7 @@ struct CompletedRestoredAgentGenerationTests {
             snapshot: snapshot,
             lifecycle: .running,
             updatedAt: updatedAt,
+            hasVerifiedLocalTranscript: false,
             processLiveness: .running,
             processIDs: [Int(identity.pid)],
             processIdentities: [Int(identity.pid): identity],

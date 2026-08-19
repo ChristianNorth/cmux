@@ -82,6 +82,7 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
     let onContextMenuDisappear: () -> Void
 
     @State private var contextMenuVisible = false
+    @Environment(\.colorScheme) private var colorScheme
 
 #if DEBUG
     // Plain-value environment probe set only by SidebarLazyLayoutScaleTests;
@@ -169,7 +170,10 @@ struct SidebarWorkspaceGroupHeaderView: View, Equatable {
                     .accessibilityHidden(true)
                 Text(name)
                     .cmuxFont(size: metrics.nameFontSize, weight: .semibold)
-                    .foregroundStyle(isAnchorActive ? Color.primary : Color.primary.opacity(0.9))
+                    .foregroundStyle(Color(nsColor: sidebarForegroundNSColor(
+                        opacity: isAnchorActive ? 1.0 : 0.9,
+                        colorScheme: colorScheme
+                    )))
                     .lineLimit(1)
                     .truncationMode(.tail)
                 if anchorUnreadCount > 0 {

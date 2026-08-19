@@ -100,6 +100,75 @@ final class RestorableAgentSessionIndexCodexWeakRecordTests: XCTestCase {
         XCTAssertEqual(snapshot.workingDirectory, repo.path)
     }
 
+    func testCodexChildHookWithoutTranscriptDoesNotOverrideTranscriptBackedParent() throws {
+        let fm = FileManager.default
+        let root = fm.temporaryDirectory
+            .appendingPathComponent("cmux-codex-child-hook-restore-\(UUID().uuidString)", isDirectory: true)
+        defer { try? fm.removeItem(at: root) }
+        let repo = root.appendingPathComponent("cmuxterm-hq", isDirectory: true)
+        let codexHome = root.appendingPathComponent(".codex", isDirectory: true)
+        let transcript = codexHome
+            .appendingPathComponent("sessions/2026/08/19", isDirectory: true)
+            .appendingPathComponent("rollout-parent.jsonl", isDirectory: false)
+        try fm.createDirectory(
+            at: transcript.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try #"{"type":"session_meta","payload":{"id":"parent"}}"#
+            .write(to: transcript, atomically: true, encoding: .utf8)
+
+        let workspaceId = UUID()
+        let panelId = UUID()
+        let parentSessionId = "01a01b82-4970-7e40-a2f8-276e2e1d225e"
+        let childSessionId = "01a01b82-5a85-7d71-8c54-d460f230bab8"
+        try writeHookStore(
+            root: root,
+            sessions: [
+                parentSessionId: codexHookRecord(
+                    sessionId: parentSessionId,
+                    workspaceId: workspaceId,
+                    panelId: panelId,
+                    cwd: repo.path,
+                    transcriptPath: transcript.path,
+                    updatedAt: 10,
+                    launchCommand: [
+                        "launcher": "codex",
+                        "executablePath": "/usr/local/bin/codex",
+                        "arguments": ["/usr/local/bin/codex", "--yolo"],
+                        "workingDirectory": repo.path,
+                        "environment": ["CODEX_HOME": codexHome.path],
+                        "capturedAt": 10,
+                        "source": "environment",
+                    ]
+                ),
+                childSessionId: codexHookRecord(
+                    sessionId: childSessionId,
+                    workspaceId: workspaceId,
+                    panelId: panelId,
+                    cwd: codexHome.appendingPathComponent("memories", isDirectory: true).path,
+                    transcriptPath: nil,
+                    updatedAt: 20,
+                    launchCommand: [
+                        "launcher": "codex",
+                        "executablePath": "/usr/local/bin/codex",
+                        "arguments": ["/usr/local/bin/codex", "--yolo"],
+                        "workingDirectory": repo.path,
+                        "environment": ["CODEX_HOME": codexHome.path],
+                        "capturedAt": 20,
+                        "source": "environment",
+                    ]
+                ),
+            ]
+        )
+
+        let snapshot = try XCTUnwrap(
+            RestorableAgentSessionIndex.load(homeDirectory: root.path, fileManager: fm)
+                .snapshot(workspaceId: workspaceId, panelId: panelId)
+        )
+        XCTAssertEqual(snapshot.sessionId, parentSessionId)
+        XCTAssertEqual(snapshot.workingDirectory, repo.path)
+    }
+
     func testCodexLegacyArgvRecordWithoutSourceIsRestorable() throws {
         let fm = FileManager.default
         let root = fm.temporaryDirectory

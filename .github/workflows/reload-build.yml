@@ -43,6 +43,14 @@ on:
         required: false
         default: ""
         type: string
+      mode:
+        description: dev (tagged reload.sh build) or release (plain unsigned cmux.app)
+        required: false
+        default: dev
+        type: choice
+        options:
+          - dev
+          - release
 
 # Surface tag/platform/nonce in the run title so the dispatcher can match its run
 # by the nonce it passed (gh workflow run does not return a run id).
@@ -93,7 +101,7 @@ jobs:
 
       # --- macOS: build the tagged dev app via the same reload.sh the fleet uses ---
       - name: Build tagged macOS app
-        if: ${{ inputs.platform == 'macos' }}
+        if: ${{ inputs.platform == 'macos' && inputs.mode != 'release' }}
         id: build_macos
         run: |
           set -euo pipefail
@@ -103,6 +111,26 @@ jobs:
           ./scripts/reload.sh --tag "${{ inputs.tag }}" --swift-frontend-workaround 2>&1 | tee "$log"
           app_path="$(awk '/^App path:/{getline; sub(/^  /,""); print; exit}' "$log")"
           [ -n "$app_path" ] && [ -d "$app_path" ] || { echo "could not locate built app" >&2; exit 1; }
+          echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
+          mkdir -p artifact
+          ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )
+
+      # --- macOS: plain unsigned Release cmux.app (real bundle id, real ghostty
+      # helper). Mirrors the xcodebuild line of build-sign-upload.sh; Sparkle key
+      # injection and signing happen on the installing machine.
+      - name: Build release macOS app
+        if: ${{ inputs.platform == 'macos' && inputs.mode == 'release' }}
+        id: build_macos_release
+        env:
+          CMUX_SKIP_ZIG_BUILD: ""
+        run: |
+          set -euo pipefail
+          xcodebuild -scheme cmux -configuration Release -derivedDataPath build CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -20
+          app_path="$PWD/build/Build/Products/Release/cmux.app"
+          [ -d "$app_path" ] || { echo "app bundle not produced: $app_path" >&2; exit 1; }
+          helper="$app_path/Contents/Resources/bin/ghostty"
+          [ -x "$helper" ] || { echo "ghostty CLI helper missing" >&2; exit 1; }
+          "$helper" +version >/dev/null 2>&1 || { echo "ghostty CLI helper is the stub; refusing release artifact" >&2; exit 1; }
           echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
           mkdir -p artifact
           ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )

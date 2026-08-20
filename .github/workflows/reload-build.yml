@@ -67,7 +67,7 @@ concurrency:
 jobs:
   build:
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       # The ghostty CLI helper zig build is skipped; GhosttyKit comes prebuilt.
       CMUX_SKIP_ZIG_BUILD: "1"

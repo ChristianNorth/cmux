@@ -16525,7 +16525,6 @@ private struct SidebarMetadataRows: View {
     let onFocus: () -> Void
 
     @State private var isExpanded: Bool = false
-    @Environment(\.colorScheme) private var colorScheme
     private let collapsedEntryLimit = 3
 
     var body: some View {
@@ -16553,8 +16552,7 @@ private struct SidebarMetadataRows: View {
                     isActive
                         ? activeSecondaryForegroundColor
                         : Color(nsColor: sidebarForegroundNSColor(
-                            opacity: 0.9,
-                            colorScheme: colorScheme
+                            opacity: 0.9
                         ))
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -16688,7 +16686,6 @@ private struct SidebarMetadataMarkdownBlocks: View {
     let onFocus: () -> Void
 
     @State private var isExpanded: Bool = false
-    @Environment(\.colorScheme) private var colorScheme
     private let collapsedBlockLimit = 1
 
     var body: some View {
@@ -16716,8 +16713,7 @@ private struct SidebarMetadataMarkdownBlocks: View {
                     isActive
                         ? activeSecondaryForegroundColor
                         : Color(nsColor: sidebarForegroundNSColor(
-                            opacity: 0.9,
-                            colorScheme: colorScheme
+                            opacity: 0.9
                         ))
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)

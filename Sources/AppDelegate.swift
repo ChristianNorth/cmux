@@ -14921,6 +14921,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
             return true
         }
 
+        // Jump to the agent session the user last typed into
+        if matchConfiguredShortcut(event: event, action: .jumpToLastPrompt) {
+            jumpToLastPrompt()
+            return true
+        }
+
         if matchConfiguredShortcut(event: event, action: .toggleUnread) {
             toggleFocusedNotificationUnread(
                 preferredWindow: mainWindowForShortcutEvent(event)

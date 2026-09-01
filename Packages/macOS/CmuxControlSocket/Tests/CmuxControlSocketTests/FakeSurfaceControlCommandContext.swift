@@ -5,6 +5,7 @@ import Foundation
 final class FakeSurfaceControlCommandContext: ControlCommandContext {
     var paneCreateResolution: ControlPaneCreateResolution = .tabManagerUnavailable
     var createResolution: ControlSurfaceCreateResolution = .tabManagerUnavailable
+    var jumpToLastPromptResolution: ControlSurfaceFocusResolution?
     var surfaceListSnapshot: ControlSurfaceListSnapshot?
     var resumeResolution: ControlSurfaceResumeResolution = .surfaceNotFound
     var resumeSetInputs: ControlSurfaceResumeSetInputs?
@@ -155,5 +156,9 @@ final class FakeSurfaceControlCommandContext: ControlCommandContext {
             stateRawValue
         )
         return reportShellStateResolution
+    }
+
+    func controlSurfaceJumpToLastPrompt() -> ControlSurfaceFocusResolution? {
+        jumpToLastPromptResolution
     }
 }

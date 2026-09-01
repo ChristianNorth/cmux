@@ -800,3 +800,32 @@ struct ControlCommandCoordinatorSurfaceTests {
         #expect(payload["cleared"] == .bool(true))
     }
 }
+
+@MainActor
+@Suite("ControlCommandCoordinator surface.jump_to_last_prompt")
+struct ControlCommandCoordinatorJumpToLastPromptTests {
+    @Test func reportsNotOpenedWhenNoSessionWasTypedInto() {
+        let context = FakeSurfaceControlCommandContext()
+        let coordinator = ControlCommandCoordinator(context: context)
+        let result = coordinator.handle(ControlRequest(id: .int(1), method: "surface.jump_to_last_prompt", params: [:]))
+        #expect(result == .ok(.object(["opened": .bool(false)])))
+    }
+
+    @Test func returnsTheFocusedPaneWhenASessionResolves() throws {
+        let context = FakeSurfaceControlCommandContext()
+        let windowID = UUID()
+        let workspaceID = UUID()
+        let surfaceID = UUID()
+        context.jumpToLastPromptResolution = .focused(windowID: windowID, workspaceID: workspaceID, surfaceID: surfaceID)
+        let coordinator = ControlCommandCoordinator(context: context)
+        let result = coordinator.handle(ControlRequest(id: .int(2), method: "surface.jump_to_last_prompt", params: [:]))
+        guard case .ok(.object(let payload)) = result else {
+            Issue.record("expected an ok payload")
+            return
+        }
+        #expect(payload["opened"] == .bool(true))
+        #expect(payload["workspace_id"] == .string(workspaceID.uuidString))
+        #expect(payload["surface_id"] == .string(surfaceID.uuidString))
+        #expect(payload["window_id"] == .string(windowID.uuidString))
+    }
+}

@@ -240,6 +240,19 @@ extension TerminalController: ControlSurfaceContext {
 
     // MARK: - focus
 
+    func controlSurfaceJumpToLastPrompt() -> ControlSurfaceFocusResolution? {
+        guard let session = AppDelegate.shared?.resolvedLastTypedAgentSession() else { return nil }
+        let routing = ControlRoutingSelectors(
+            hasWindowIDParam: false,
+            windowID: nil,
+            groupID: nil,
+            workspaceID: session.workspace.id,
+            surfaceID: session.panelId,
+            paneID: nil
+        )
+        return controlSurfaceFocus(routing: routing, surfaceID: session.panelId)
+    }
+
     func controlSurfaceFocus(
         routing: ControlRoutingSelectors,
         surfaceID: UUID

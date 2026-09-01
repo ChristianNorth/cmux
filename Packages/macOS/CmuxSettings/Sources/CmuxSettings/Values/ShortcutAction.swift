@@ -31,6 +31,7 @@ public enum ShortcutAction: String, CaseIterable, Sendable, Hashable, SettingCod
     case sendFeedback
     case showNotifications
     case jumpToUnread
+    case jumpToLastPrompt
     case toggleUnread
     case markOldestUnreadAndJumpNext
     /// Marks every notification read without removing notification rows.

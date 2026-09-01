@@ -26,6 +26,8 @@ extension ControlCommandCoordinator {
             return surfaceCurrent(request.params, context: context)
         case "surface.focus":
             return surfaceFocus(request.params)
+        case "surface.jump_to_last_prompt":
+            return surfaceJumpToLastPrompt()
         case "surface.split":
             return surfaceSplit(request.params)
         case "surface.respawn":
@@ -297,6 +299,27 @@ extension ControlCommandCoordinator {
         }
         let resolution = context?.controlSurfaceFocus(routing: routing, surfaceID: surfaceID)
             ?? .tabManagerUnavailable
+        return surfaceFocusResult(resolution, requestedSurfaceID: surfaceID)
+    }
+
+    /// `surface.jump_to_last_prompt`: focus the pane of the agent session the
+    /// user last typed into. `{"opened": false}` when there is no such session.
+    func surfaceJumpToLastPrompt() -> ControlCallResult {
+        guard let resolution = context?.controlSurfaceJumpToLastPrompt() else {
+            return .ok(.object(["opened": .bool(false)]))
+        }
+        let result = surfaceFocusResult(resolution, requestedSurfaceID: nil)
+        if case .ok(.object(var payload)) = result {
+            payload["opened"] = .bool(true)
+            return .ok(.object(payload))
+        }
+        return result
+    }
+
+    private func surfaceFocusResult(
+        _ resolution: ControlSurfaceFocusResolution,
+        requestedSurfaceID: UUID?
+    ) -> ControlCallResult {
         switch resolution {
         case .tabManagerUnavailable:
             return .err(code: "unavailable", message: "TabManager not available", data: nil)
@@ -312,7 +335,7 @@ extension ControlCommandCoordinator {
             return .err(
                 code: "unavailable",
                 message: message,
-                data: .object(["surface_id": .string(surfaceID.uuidString)])
+                data: requestedSurfaceID.map { .object(["surface_id": .string($0.uuidString)]) }
             )
         case .focused(let windowID, let workspaceID, let focusedSurfaceID):
             return .ok(.object([

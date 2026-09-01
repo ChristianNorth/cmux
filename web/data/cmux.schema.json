@@ -1666,6 +1666,7 @@
               "sendFeedback",
               "showNotifications",
               "jumpToUnread",
+              "jumpToLastPrompt",
               "toggleUnread",
               "markOldestUnreadAndJumpNext",
               "markAllNotificationsRead",

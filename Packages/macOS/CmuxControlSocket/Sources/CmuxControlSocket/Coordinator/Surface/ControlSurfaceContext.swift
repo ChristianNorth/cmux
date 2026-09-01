@@ -73,6 +73,10 @@ public protocol ControlSurfaceContext: AnyObject {
         surfaceID: UUID
     ) -> ControlSurfaceFocusResolution
 
+    /// Focuses the pane of the coding-agent session the user most recently
+    /// typed into (`surface.jump_to_last_prompt`). Nil when there is none.
+    func controlSurfaceJumpToLastPrompt() -> ControlSurfaceFocusResolution?
+
     /// Creates a split surface for `surface.split`.
     ///
     /// - Parameters:

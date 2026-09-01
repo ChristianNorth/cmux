@@ -413,6 +413,8 @@ extension ControlSurfaceContext {
         surfaceID: UUID
     ) -> ControlSurfaceFocusResolution { .tabManagerUnavailable }
 
+    func controlSurfaceJumpToLastPrompt() -> ControlSurfaceFocusResolution? { nil }
+
     func controlSurfaceRespawnStrings() -> ControlSurfaceRespawnStrings {
         ControlSurfaceRespawnStrings(
             invalidFocus: "",

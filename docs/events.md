@@ -317,6 +317,7 @@ Notifications:
 | `notification.mark_read_requested` | Socket command asked cmux to mark notifications read. |
 | `notification.open_requested` | Socket command asked cmux to open a notification by id. |
 | `notification.jump_to_unread_requested` | Socket command asked cmux to jump to the latest unread notification. |
+| `surface.jump_to_last_prompt_requested` | Socket command asked cmux to focus the coding-agent session the user last typed into. |
 | `notification.created` | Notification store created a notification. |
 | `notification.read` | Notification was marked read. |
 | `notification.removed` | One notification was removed. |

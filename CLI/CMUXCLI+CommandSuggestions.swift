@@ -112,6 +112,7 @@ extension CMUXCLI {
         "ios",
         "join-pane",
         "jump-to-unread",
+        "jump-to-last-prompt",
         "last-pane",
         "last-window",
         "list-buffers",

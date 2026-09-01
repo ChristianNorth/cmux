@@ -75,7 +75,7 @@ extension KeyboardShortcutSettings.Action {
              .saveLayoutTemplate, .openFolder,
              .reopenPreviousSession, .goToWorkspace,
              .commandPalette, .sendFeedback,
-             .showNotifications, .jumpToUnread, .toggleUnread,
+             .showNotifications, .jumpToUnread, .jumpToLastPrompt, .toggleUnread,
              .markOldestUnreadAndJumpNext,
              .markAllNotificationsRead, .clearAllNotifications,
              .focusRightSidebar,

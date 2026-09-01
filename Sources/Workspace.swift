@@ -3644,7 +3644,9 @@ final class Workspace: Identifiable, ObservableObject, FilePreviewTabMetadataHos
         )
         return BonsplitConfiguration.Appearance(
             tabBarHeight: WindowChromeMetrics.bonsplitTabBarHeight,
+            tabMaxWidth: TabBarSettings.tabMaxWidth(),
             tabTitleFontSize: tabTitleFontSize,
+            tabWidthMode: TabBarSettings.widthMode().bonsplitMode,
             dividerHitExpansion: PortalSplitDividerRegion.dividerHitExpansion,
             splitButtonBackdropEffect: Self.bonsplitSplitButtonBackdropEffect(),
             splitButtonTooltips: Self.currentSplitButtonTooltips(),
@@ -3652,6 +3654,20 @@ final class Workspace: Identifiable, ObservableObject, FilePreviewTabMetadataHos
             chromeColors: chromeColors,
             usesSharedBackdrop: sharesWindowBackdrop
         )
+    }
+
+    /// Applies the `tabBar.*` settings to the live tab strip (called on
+    /// `TabBarSettings.didChangeNotification`, i.e. `cmux reload-config`).
+    func applyTabBarSettings() {
+        let nextMode = TabBarSettings.widthMode().bonsplitMode
+        let nextMaxWidth = TabBarSettings.tabMaxWidth()
+        let current = bonsplitController.configuration.appearance
+        if current.tabWidthMode != nextMode {
+            bonsplitController.configuration.appearance.tabWidthMode = nextMode
+        }
+        if abs(current.tabMaxWidth - nextMaxWidth) > 0.0001 {
+            bonsplitController.configuration.appearance.tabMaxWidth = nextMaxWidth
+        }
     }
 
     func applyGhosttyChrome(from config: GhosttyConfig, reason: String = "unspecified") {

@@ -402,6 +402,9 @@ struct WorkspaceContentView: View {
         .onReceive(NotificationCenter.default.publisher(for: PaneChromeSettings.didChangeNotification)) { _ in
             workspace.applyGhosttyChrome(from: config, reason: "paneChromeSettingsDidChange")
         }
+        .onReceive(NotificationCenter.default.publisher(for: TabBarSettings.didChangeNotification)) { _ in
+            workspace.applyTabBarSettings()
+        }
         .onChange(of: colorScheme) { oldValue, newValue in
             // Keep split overlay color/opacity in sync with light/dark theme transitions.
             refreshGhosttyAppearanceConfig(reason: "colorSchemeChanged:\(oldValue)->\(newValue)")

@@ -539,6 +539,8 @@ extension CmuxSettingsFileStore {
         "markdown.fontSize",
         "markdown.fontFamily",
         "markdown.maxWidth",
+        "tabBar.widthMode",
+        "tabBar.tabMaxWidth",
         "canvas.paneGap",
         "canvas.snappingEnabled",
         "fileEditor.wordWrap",

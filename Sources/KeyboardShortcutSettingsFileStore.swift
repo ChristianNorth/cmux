@@ -406,6 +406,9 @@ final class CmuxSettingsFileStore {
         if let markdownSection = root["markdown"] as? [String: Any] {
             parseMarkdownSection(markdownSection, sourcePath: sourcePath, snapshot: &snapshot)
         }
+        if let tabBarSection = root["tabBar"] as? [String: Any] {
+            parseTabBarSection(tabBarSection, sourcePath: sourcePath, snapshot: &snapshot)
+        }
         if let fileEditorSection = root["fileEditor"] as? [String: Any] {
             parseFileEditorSection(fileEditorSection, sourcePath: sourcePath, snapshot: &snapshot)
         }
@@ -1621,8 +1624,13 @@ final class CmuxSettingsFileStore {
             var agentHibernationDidChange = false
             var rendererRealizationDidChange = false
             var paneChromeDidChange = false
+            var tabBarDidChange = false
             var adaptiveDefaultThemeDidChange = false
             for change in changes {
+                if change.defaultsKey == TabBarSettings.widthModeKey ||
+                    change.defaultsKey == TabBarSettings.tabMaxWidthKey {
+                    tabBarDidChange = true
+                }
                 if change.defaultsKey == TerminalScrollBarSettings.showScrollBarKey {
                     TerminalScrollBarSettings.notifyDidChange(notificationCenter: notificationCenter)
                 }
@@ -1677,6 +1685,9 @@ final class CmuxSettingsFileStore {
             }
             if paneChromeDidChange {
                 PaneChromeSettings.notifyDidChange(notificationCenter: notificationCenter)
+            }
+            if tabBarDidChange {
+                TabBarSettings.notifyDidChange(notificationCenter: notificationCenter)
             }
             if adaptiveDefaultThemeDidChange {
                 TerminalAdaptiveDefaultThemeSettings.notifyDidChange(

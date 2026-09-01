@@ -29,6 +29,8 @@ public struct SettingCatalog: SettingCatalogSection {
     public let sidebarAppearance = SidebarAppearanceCatalogSection()
     /// Settings for cmux pane divider and focused-pane chrome.
     public let paneChrome = PaneChromeCatalogSection()
+    /// Settings for the pane tab strip (the `tabBar.*` keys).
+    public let tabBar = TabBarCatalogSection()
     public let workspaceColors = WorkspaceColorsCatalogSection()
     /// Settings for sidebar workspace groups (the `workspaceGroups.*` keys).
     public let workspaceGroups = WorkspaceGroupsCatalogSection()

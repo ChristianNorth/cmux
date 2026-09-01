@@ -101,6 +101,28 @@ extension CmuxSettingsFileStore {
         }
     }
 
+    func parseTabBarSection(
+        _ section: [String: Any],
+        sourcePath: String,
+        snapshot: inout ResolvedSettingsSnapshot
+    ) {
+        if let value = jsonString(section["widthMode"]) {
+            if TabBarCatalogSection.widthModeValues.contains(value) {
+                snapshot.managedUserDefaults[TabBarSettings.widthModeKey] = .string(value)
+            } else {
+                logInvalid("tabBar.widthMode", sourcePath: sourcePath)
+            }
+        } else if section.keys.contains("widthMode") {
+            logInvalid("tabBar.widthMode", sourcePath: sourcePath)
+        }
+
+        if let value = jsonDouble(section["tabMaxWidth"]) {
+            snapshot.managedUserDefaults[TabBarSettings.tabMaxWidthKey] = .double(TabBarSettings.sanitizedTabMaxWidth(value))
+        } else if section.keys.contains("tabMaxWidth") {
+            logInvalid("tabBar.tabMaxWidth", sourcePath: sourcePath)
+        }
+    }
+
     func parseMobileSection(
         _ section: [String: Any],
         sourcePath: String,

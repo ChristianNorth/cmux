@@ -225,6 +225,12 @@ extension CmuxSettingsFileStore {
                 ],
             ],
             [
+                "tabBar": [
+                    "widthMode": TabBarCatalogSection.widthModeDefault,
+                    "tabMaxWidth": Int(TabBarCatalogSection.tabMaxWidthDefault),
+                ],
+            ],
+            [
                 "markdown": [
                     "fontSize": Int(MarkdownFontSizeSettings.defaultPointSize),
                     "fontFamily": "",

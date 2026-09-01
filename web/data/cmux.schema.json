@@ -1531,6 +1531,27 @@
         }
       }
     },
+    "tabBar": {
+      "title": "tabBar",
+      "description": "Pane tab strip settings.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "widthMode": {
+          "type": "string",
+          "enum": ["fill", "fixed"],
+          "default": "fill",
+          "description": "fill stretches tabs across the pane's free width (one tab spans the whole bar, many tabs share it and then scroll); fixed keeps every tab at its natural width and scrolls the strip."
+        },
+        "tabMaxWidth": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 1000,
+          "default": 360,
+          "description": "The widest a tab may grow, in points, before its title truncates."
+        }
+      }
+    },
     "markdown": {
       "title": "markdown",
       "description": "Built-in markdown viewer settings.",

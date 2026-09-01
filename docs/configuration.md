@@ -143,6 +143,24 @@ Shows a loading spinner on sidebar workspace rows that currently have running co
 
 The spinner is compositor-driven (a Core Animation transform run by the render server), so it costs no per-frame CPU and pauses automatically while the window is occluded or Reduce Motion is on. Toggle it manually per workspace with `cmux workspace loading <on|off> [--id <name>]`; each `--id` is a separate loader and the command prints the workspace state as `before=ON;after=OFF`.
 
+## `tabBar`
+
+Shapes the surface tab strip at the top of each pane.
+
+```json
+{
+  "tabBar": {
+    "widthMode": "fill",
+    "tabMaxWidth": 360
+  }
+}
+```
+
+- `widthMode`: `fill` (default) stretches tabs across the pane's free width, so one tab spans the whole bar and several share it evenly; when they would overflow, the strip falls back to natural widths and scrolls. `fixed` keeps the older behavior: every tab at its natural width, strip scrolls.
+- `tabMaxWidth`: the widest a tab may grow before its title truncates, in points (100 to 1000). Default: `360`.
+
+Both apply live through `cmux reload-config`.
+
 ## `sidebar.showAgentSessions`
 
 Lists each workspace's live coding-agent sessions (Claude Code, Codex) under the workspace title, one row per session in tab order: a state dot (running, idle, needs input), the agent's own title (Claude's `ai-title`, else the tab title), and an age since the session last moved. The selected workspace, and the one session you most recently typed into anywhere (marked `◀`), also show your last prompt on a second line. Clicking a row focuses that session's pane; `⌘⇧B` (`jumpToLastPrompt`) jumps back to the last-typed session.

@@ -10,6 +10,7 @@ struct SidebarWorkspaceSnapshotBuilder {
         let showsGitBranch: Bool
         let usesViewportAwarePath: Bool
         let showsAgentActivity: Bool
+        let showsAgentSessions: Bool
         let visibleAuxiliaryDetails: SidebarWorkspaceAuxiliaryDetailVisibility
     }
 
@@ -68,5 +69,8 @@ struct SidebarWorkspaceSnapshotBuilder {
         let checklistCompletedCount: Int
         let checklistTotalCount: Int
         let checklistFirstUncheckedText: String?
+        // Live coding-agent sessions hosted by this workspace's panes, in tab
+        // order (empty when `sidebar.showAgentSessions` is off).
+        let agentSessions: [SidebarAgentSessionSnapshot]
     }
 }

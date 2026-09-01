@@ -16,6 +16,7 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
         let checklistTotalCount: Int
         let checklistFirstUncheckedText: String?
         let activeCodingAgentCount: Int
+        let agentSessions: [SidebarAgentSessionSnapshot]
     }
 
     var contextMenuImmediateFields: ContextMenuImmediateFields {
@@ -33,7 +34,8 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             checklistCompletedCount: checklistCompletedCount,
             checklistTotalCount: checklistTotalCount,
             checklistFirstUncheckedText: checklistFirstUncheckedText,
-            activeCodingAgentCount: activeCodingAgentCount
+            activeCodingAgentCount: activeCodingAgentCount,
+            agentSessions: agentSessions
         )
     }
 
@@ -78,7 +80,10 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             checklistItems: snapshot.checklistItems,
             checklistCompletedCount: snapshot.checklistCompletedCount,
             checklistTotalCount: snapshot.checklistTotalCount,
-            checklistFirstUncheckedText: snapshot.checklistFirstUncheckedText
+            checklistFirstUncheckedText: snapshot.checklistFirstUncheckedText,
+            // Agent session rows are live status like the spinner: a session
+            // finishing or asking for input must show while the menu is open.
+            agentSessions: snapshot.agentSessions
         )
     }
 }

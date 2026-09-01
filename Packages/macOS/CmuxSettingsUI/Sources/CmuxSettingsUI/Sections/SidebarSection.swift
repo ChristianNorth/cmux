@@ -29,6 +29,7 @@ public struct SidebarSection: View {
     @State private var showLog: DefaultsValueModel<Bool>
     @State private var showProgress: DefaultsValueModel<Bool>
     @State var showAgentActivity: DefaultsValueModel<Bool>
+    @State var showAgentSessions: DefaultsValueModel<Bool>
     @State var loadingSpinnerPosition: DefaultsValueModel<SidebarIndicatorPosition>
     @State var notificationBadgePosition: DefaultsValueModel<SidebarIndicatorPosition>
     @State private var showMetadata: DefaultsValueModel<Bool>
@@ -58,6 +59,7 @@ public struct SidebarSection: View {
         _showLog = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.showLog))
         _showProgress = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.showProgress))
         _showAgentActivity = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.showAgentActivity))
+        _showAgentSessions = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.showAgentSessions))
         _loadingSpinnerPosition = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.loadingSpinnerPosition))
         _notificationBadgePosition = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.notificationBadgePosition))
         _showMetadata = State(initialValue: DefaultsValueModel(store: defaultsStore, key: catalog.sidebar.showCustomMetadata))
@@ -92,6 +94,7 @@ public struct SidebarSection: View {
             showLog,
             showProgress,
             showAgentActivity,
+            showAgentSessions,
             loadingSpinnerPosition,
             notificationBadgePosition,
             showMetadata,

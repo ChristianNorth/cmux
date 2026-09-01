@@ -9,6 +9,8 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
     let hidesAllDetails: Bool
     let wrapsWorkspaceTitles: Bool
     let showsWorkspaceDescription: Bool
+    /// Agent session rows are workspace details, so "Hide all details" hides them too.
+    let showsAgentSessions: Bool
     let sidebarShortcutHintXOffset: Double
     let sidebarShortcutHintYOffset: Double
     let alwaysShowShortcutHints: Bool
@@ -66,6 +68,7 @@ struct SidebarTabItemSettingsSnapshot: Equatable {
             hideAllDetails: hidesAllDetails
         )
         showsWorkspaceDescription = detailVisibility.showsWorkspaceDescription
+        showsAgentSessions = details.showAgentSessions && !hidesAllDetails
         showsNotificationMessage = detailVisibility.showsNotificationMessage
         notificationMessageLineLimit = min(
             max(

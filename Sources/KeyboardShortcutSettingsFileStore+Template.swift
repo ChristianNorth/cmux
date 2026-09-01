@@ -158,6 +158,7 @@ extension CmuxSettingsFileStore {
                     "showLog": SidebarWorkspaceDetailDefaults.showLog,
                     "showProgress": SidebarWorkspaceDetailDefaults.showProgress,
                     "showAgentActivity": SidebarWorkspaceDetailDefaults.showAgentActivity,
+                    "showAgentSessions": SidebarWorkspaceDetailDefaults.showAgentSessions,
                     "showCustomMetadata": SidebarWorkspaceDetailDefaults.showCustomMetadata,
                 ],
             ],

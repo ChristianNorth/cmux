@@ -11,6 +11,7 @@ struct SidebarWorkspaceDetailSettings: Equatable {
     let showLog: Bool
     let showProgress: Bool
     let showAgentActivity: Bool
+    let showAgentSessions: Bool
     let showCustomMetadata: Bool
 
     init(defaults: UserDefaults) {
@@ -24,6 +25,7 @@ struct SidebarWorkspaceDetailSettings: Equatable {
         showLog = settings.value(for: sidebar.showLog)
         showProgress = settings.value(for: sidebar.showProgress)
         showAgentActivity = settings.value(for: sidebar.showAgentActivity)
+        showAgentSessions = settings.value(for: sidebar.showAgentSessions)
         showCustomMetadata = settings.value(for: sidebar.showCustomMetadata)
     }
 }

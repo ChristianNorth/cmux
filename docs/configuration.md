@@ -143,6 +143,20 @@ Shows a loading spinner on sidebar workspace rows that currently have running co
 
 The spinner is compositor-driven (a Core Animation transform run by the render server), so it costs no per-frame CPU and pauses automatically while the window is occluded or Reduce Motion is on. Toggle it manually per workspace with `cmux workspace loading <on|off> [--id <name>]`; each `--id` is a separate loader and the command prints the workspace state as `before=ON;after=OFF`.
 
+## `sidebar.showAgentSessions`
+
+Lists each workspace's live coding-agent sessions (Claude Code, Codex) under the workspace title, one row per session in tab order: a state dot (running, idle, needs input), the agent's own title (Claude's `ai-title`, else the tab title), and an age since the session last moved. The selected workspace, and the one session you most recently typed into anywhere (marked `◀`), also show your last prompt on a second line. Clicking a row focuses that session's pane; `⌘⇧B` (`jumpToLastPrompt`) jumps back to the last-typed session.
+
+```json
+{
+  "sidebar": {
+    "showAgentSessions": true
+  }
+}
+```
+
+- `showAgentSessions`: show the session rows. Default: `true`. Hidden together with everything else when `sidebar.hideAllDetails` is on. Toggle it from **Settings > Sidebar > Show Agent Sessions**.
+
 ## `terminal.showTextBoxOnNewTerminals` and `terminal.focusTextBoxOnNewTerminals`
 
 `terminal.showTextBoxOnNewTerminals` opens the TextBox on newly-created terminal sessions without moving keyboard focus into it.

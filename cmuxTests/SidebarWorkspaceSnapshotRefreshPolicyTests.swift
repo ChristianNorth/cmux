@@ -188,7 +188,8 @@ import Testing
         listeningPorts: [Int] = [],
         finderDirectoryPath: String? = nil,
         mediaActivity: BrowserMediaActivity = BrowserMediaActivity(),
-        activeCodingAgentCount: Int = 0
+        activeCodingAgentCount: Int = 0,
+        agentSessions: [SidebarAgentSessionSnapshot] = []
     ) -> SidebarWorkspaceSnapshotBuilder.Snapshot {
         SidebarWorkspaceSnapshotBuilder.Snapshot(
             presentationKey: presentationKey ?? Self.presentationKey(),
@@ -222,7 +223,8 @@ import Testing
             checklistItems: [],
             checklistCompletedCount: 0,
             checklistTotalCount: 0,
-            checklistFirstUncheckedText: nil
+            checklistFirstUncheckedText: nil,
+            agentSessions: agentSessions
         )
     }
 
@@ -232,6 +234,7 @@ import Testing
         showsGitBranch: Bool = true,
         usesViewportAwarePath: Bool = false,
         showsAgentActivity: Bool = true,
+        showsAgentSessions: Bool = true,
         visibleAuxiliaryDetails: SidebarWorkspaceAuxiliaryDetailVisibility = SidebarWorkspaceAuxiliaryDetailVisibility(
             showsMetadata: true,
             showsLog: true,
@@ -247,6 +250,7 @@ import Testing
             showsGitBranch: showsGitBranch,
             usesViewportAwarePath: usesViewportAwarePath,
             showsAgentActivity: showsAgentActivity,
+            showsAgentSessions: showsAgentSessions,
             visibleAuxiliaryDetails: visibleAuxiliaryDetails
         )
     }

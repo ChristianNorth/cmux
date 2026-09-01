@@ -19,7 +19,7 @@ struct SidebarWorkspaceSnapshotFactory {
     func makeSnapshot() -> SidebarWorkspaceSnapshotBuilder.Snapshot {
         let detailVisibility = settings.visibleAuxiliaryDetails
         let orderedPanelIds: [UUID]? =
-            (detailVisibility.showsBranchDirectory || detailVisibility.showsPullRequests)
+            (detailVisibility.showsBranchDirectory || detailVisibility.showsPullRequests || settings.showsAgentSessions)
                 ? workspace.sidebarOrderedPanelIds()
                 : nil
         let compactGitBranchSummaryText: String? = {
@@ -117,7 +117,10 @@ struct SidebarWorkspaceSnapshotFactory {
             checklistItems: workspace.todoState.checklist,
             checklistCompletedCount: checklistProgress.completedCount,
             checklistTotalCount: checklistProgress.totalCount,
-            checklistFirstUncheckedText: checklistProgress.firstUncheckedText
+            checklistFirstUncheckedText: checklistProgress.firstUncheckedText,
+            agentSessions: settings.showsAgentSessions
+                ? workspace.sidebarAgentSessionSnapshots(orderedPanelIds: orderedPanelIds ?? [])
+                : []
         )
     }
 
@@ -135,6 +138,7 @@ struct SidebarWorkspaceSnapshotFactory {
             showsGitBranch: settings.showsGitBranch,
             usesViewportAwarePath: settings.usesLastSegmentPath,
             showsAgentActivity: showsAgentActivity,
+            showsAgentSessions: settings.showsAgentSessions,
             visibleAuxiliaryDetails: settings.visibleAuxiliaryDetails
         )
     }

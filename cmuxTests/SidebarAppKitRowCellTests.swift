@@ -215,7 +215,8 @@ struct SidebarAppKitRowCellTests {
             onEndChecklistItemEdit: { _ in },
             applyTodoStatus: { _ in },
             hideTodoStatus: {},
-            commitRename: { _ in }
+            commitRename: { _ in },
+            focusAgentSurface: { _ in }
         )
     }
 

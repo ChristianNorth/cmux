@@ -65,6 +65,12 @@ struct SidebarWorkspaceRowModel: Equatable {
     /// apply pass.
     let isMetadataExpanded: Bool
     let isMarkdownExpanded: Bool
+    /// Agent session lines under the title, already formatted for `now`
+    /// (`SidebarRowAgentSessionPresenter`). `var` only so
+    /// `hasHeightEquivalentContent` can blank the ticking ages.
+    var agentSessionRows: [SidebarRowAgentSessionDisplay] = []
+    /// Age of the newest session activity, drawn at the end of the title line.
+    var newestAgentSessionAgeText: String?
 
     var fontScale: CGFloat { settings.sidebarFontScale }
 
@@ -87,6 +93,12 @@ struct SidebarWorkspaceRowModel: Equatable {
         normalizedOther.index = 0
         normalizedSelf.isFirstRow = false
         normalizedOther.isFirstRow = false
+        // Ages tick once a minute inside a fixed-width column; the text never
+        // changes the measured height, so a tick must not invalidate the cache.
+        normalizedSelf.agentSessionRows = normalizedSelf.agentSessionRows.map { $0.neutralizingAge() }
+        normalizedOther.agentSessionRows = normalizedOther.agentSessionRows.map { $0.neutralizingAge() }
+        normalizedSelf.newestAgentSessionAgeText = nil
+        normalizedOther.newestAgentSessionAgeText = nil
         return normalizedSelf == normalizedOther
     }
 }
@@ -130,6 +142,8 @@ struct SidebarAppKitRowActions {
     /// Opts this row's workspace out of the status feature (None).
     let hideTodoStatus: () -> Void
     let commitRename: (String) -> Void
+    /// Focuses the pane hosting an agent session (session row click).
+    let focusAgentSurface: (UUID) -> Void
 }
 
 

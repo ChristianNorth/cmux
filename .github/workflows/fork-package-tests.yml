@@ -1,0 +1,40 @@
+name: fork package tests
+
+# Fork-only: run one SwiftPM package's tests on a GitHub-hosted macOS runner.
+# Upstream runs these inside ci.yml on self-hosted runners the fork does not have.
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package path (e.g. Packages/macOS/CmuxSettings)
+        required: true
+        type: string
+      filter:
+        description: Optional swift test --filter regex (suite or test name)
+        required: false
+        default: ""
+        type: string
+
+run-name: "package tests ${{ inputs.package }} ${{ inputs.filter }}"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ${{ vars.MACOS_RUNNER_15 || 'macos-15' }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Select Xcode
+        run: ./scripts/select-ci-xcode.sh
+      - name: Run tests
+        run: |
+          set -euo pipefail
+          args=()
+          if [ -n "${{ inputs.filter }}" ]; then
+            args+=(--filter "${{ inputs.filter }}")
+          fi
+          swift test --package-path "${{ inputs.package }}" "${args[@]}" 2>&1 | tail -80

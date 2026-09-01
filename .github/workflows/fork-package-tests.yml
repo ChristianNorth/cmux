@@ -37,4 +37,4 @@ jobs:
           if [ -n "${{ inputs.filter }}" ]; then
             args+=(--filter "${{ inputs.filter }}")
           fi
-          swift test --package-path "${{ inputs.package }}" "${args[@]}" 2>&1 | tail -80
+          swift test --package-path "${{ inputs.package }}" ${args[@]+"${args[@]}"} 2>&1 | tail -80

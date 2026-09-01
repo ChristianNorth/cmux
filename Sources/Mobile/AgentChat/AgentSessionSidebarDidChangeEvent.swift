@@ -42,6 +42,14 @@ struct AgentSessionSidebarDidChangeEvent: Sendable {
         self.init(panelIds: Set(panelIds), workspaceIds: Set(workspaceIds))
     }
 
+    /// Whether a workspace's sidebar row may have changed: it hosts one of the
+    /// named panes, or the record named it directly.
+    @MainActor
+    func affects(_ workspace: Workspace) -> Bool {
+        if workspaceIds.contains(workspace.id) { return true }
+        return panelIds.contains { workspace.panels[$0] != nil }
+    }
+
     func post(center: NotificationCenter = .default) {
         center.post(
             name: Self.notificationName,

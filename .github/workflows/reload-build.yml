@@ -43,6 +43,14 @@ on:
         required: false
         default: ""
         type: string
+      mode:
+        description: dev (tagged reload.sh build) or release (plain unsigned cmux.app with the real ghostty helper)
+        required: false
+        default: dev
+        type: choice
+        options:
+          - dev
+          - release
 
 # Surface tag/platform/nonce in the run title so the dispatcher can match its run
 # by the nonce it passed (gh workflow run does not return a run id).
@@ -59,7 +67,7 @@ concurrency:
 jobs:
   build:
     runs-on: ${{ inputs.runner }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       # The ghostty CLI helper zig build is skipped; GhosttyKit comes prebuilt.
       CMUX_SKIP_ZIG_BUILD: "1"
@@ -434,7 +442,7 @@ jobs:
 
       # --- macOS: build the tagged dev app via the same reload.sh the fleet uses ---
       - name: Build tagged macOS app
-        if: ${{ inputs.platform == 'macos' }}
+        if: ${{ inputs.platform == 'macos' && inputs.mode != 'release' }}
         id: build_macos
         env:
           BUILD_TAG: ${{ inputs.tag }}
@@ -496,6 +504,36 @@ jobs:
 
           app_path="$(awk '/^App path:/{getline; sub(/^  /,""); print; exit}' "$log")"
           [ -n "$app_path" ] && [ -d "$app_path" ] || { echo "could not locate built app" >&2; exit 1; }
+          echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
+          mkdir -p artifact
+          ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )
+
+      # --- macOS: plain unsigned Release cmux.app (real bundle id, real ghostty
+      # helper). Mirrors the xcodebuild line of release.yml; Sparkle key injection
+      # and signing happen on the installing machine. Fork-only (local install path).
+      - name: Install zig for the release ghostty helper
+        if: ${{ inputs.platform == 'macos' && inputs.mode == 'release' && steps.ghosttykit_prebuilt.outputs.available == 'true' }}
+        run: ./scripts/install-zig-ci.sh
+
+      - name: Build release macOS app
+        if: ${{ inputs.platform == 'macos' && inputs.mode == 'release' }}
+        id: build_macos_release
+        env:
+          CMUX_SKIP_ZIG_BUILD: ""
+          CMUX_GHOSTTYKIT_PREPROVISIONED: "1"
+          CMUX_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/.ci-source-packages
+        run: |
+          set -euo pipefail
+          derived_data="$GITHUB_WORKSPACE/.ci-release-derived-data"
+          xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release \
+            -derivedDataPath "$derived_data" \
+            -clonedSourcePackagesDirPath "$CMUX_SOURCE_PACKAGES_DIR" \
+            CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -40
+          app_path="$derived_data/Build/Products/Release/cmux.app"
+          [ -d "$app_path" ] || { echo "app bundle not produced: $app_path" >&2; exit 1; }
+          helper="$app_path/Contents/Resources/bin/ghostty"
+          [ -x "$helper" ] || { echo "ghostty CLI helper missing" >&2; exit 1; }
+          "$helper" +version >/dev/null 2>&1 || { echo "ghostty CLI helper is the stub; refusing release artifact" >&2; exit 1; }
           echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
           mkdir -p artifact
           ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )

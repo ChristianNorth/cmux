@@ -28030,7 +28030,11 @@ struct CMUXCLI {
             case "permission_prompt":
                 journalKind = .approvalRequested
             case "idle_prompt":
-                journalKind = suppressNeedsInputState ? .stateChanged : .questionRequested
+                // Claude's ~60s idle reminder is not a request for input: the
+                // session keeps its lifecycle and gets no "Needs input" pill.
+                // (Upstream journals it as a question; this build's sidebar
+                // session rows carry the real state, so the nag stays quiet.)
+                journalKind = .stateChanged
             default:
                 switch classifiedSubtitle {
                 case "Permission":

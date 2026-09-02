@@ -289,11 +289,14 @@ struct ClaudeBackgroundWorkNotifyTests {
         let snapshot = context.state.snapshot()
         #expect(notifyLine(snapshot, containing: "c=idle-reminder;p=0") != nil,
                 "idle_prompt after an idle stop must tag pending=0; saw \(snapshot)")
-        // With no pending work this is a real waiting state, so the pill
-        // flips and the journal records the needs-input question.
-        #expect(statusLine(snapshot, value: "Needs input") != nil,
-                "Idle idle_prompt must still set the Needs input pill; saw \(snapshot)")
-        #expect(journalEvent(snapshot, kind: "agent.question.requested") != nil,
-                "Idle idle_prompt must journal a needs-input question; saw \(snapshot)")
+        // The idle reminder is not a request for input in this build: no
+        // "Needs input" pill, and the journal records a plain state change
+        // instead of a question (the sidebar session rows carry the state).
+        #expect(statusLine(snapshot, value: "Needs input") == nil,
+                "Idle idle_prompt must not set the Needs input pill; saw \(snapshot)")
+        #expect(journalEvent(snapshot, kind: "agent.state.changed") != nil,
+                "Idle idle_prompt must journal a state change; saw \(snapshot)")
+        #expect(journalEvent(snapshot, kind: "agent.question.requested") == nil,
+                "Idle idle_prompt must not journal a needs-input question; saw \(snapshot)")
     }
 }

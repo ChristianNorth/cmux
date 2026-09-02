@@ -206,8 +206,10 @@ struct SidebarAppKitRowCellAgentSessionsTests {
             try #require(Self.descendants(of: line).compactMap { $0 as? NSTextField }.first { $0.stringValue == title })
         }
         let runningColor = SidebarRowAgentSessionLine.runningTitleColor(isActive: false, colorSchemeIsDark: true)
-        #expect(try titleField(lines[0], "Running one").textColor == runningColor)
-        #expect(try titleField(lines[1], "Idle one").textColor != runningColor)
+        let runningField = try titleField(lines[0], "Running one")
+        let idleField = try titleField(lines[1], "Idle one")
+        #expect(runningField.textColor == runningColor)
+        #expect(idleField.textColor != runningColor)
         #expect(!lines[0].hasVisibleBall)
         #expect(!lines[1].hasVisibleBall)
         #expect(lines[2].hasVisibleBall)

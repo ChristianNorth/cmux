@@ -17,12 +17,29 @@ enum SidebarGroupFrameSegment: Equatable {
 
 /// Draws one row's slice of the group outline. Sits behind every other
 /// subview of the cell and never participates in height measurement.
+///
+/// Host cells must size non-bottom segments `rowGapOverdraw` taller than the
+/// row content (see `frameHeight(forContentHeight:)`): drawing cannot escape
+/// the layer-backed view's bounds, so the intercell gap is covered by
+/// extending the frame, not by drawing outside it.
 @MainActor
 final class SidebarGroupFrameSegmentView: NSView {
     static let cornerRadius: CGFloat = 10
     static let lineWidth: CGFloat = 1.5
     /// The table's intercell gap, overdrawn below non-bottom segments.
     static let rowGapOverdraw: CGFloat = 2
+
+    /// The frame height a host cell should give this view: non-bottom
+    /// segments extend into the intercell gap below the row so consecutive
+    /// slices join without a seam.
+    static func frameHeight(forContentHeight height: CGFloat, segment: SidebarGroupFrameSegment?) -> CGFloat {
+        switch segment {
+        case .top, .middle:
+            return height + rowGapOverdraw
+        case .bottom, .solo, nil:
+            return height
+        }
+    }
 
     private var segment: SidebarGroupFrameSegment = .middle
     private var color: NSColor = .separatorColor
@@ -59,14 +76,15 @@ final class SidebarGroupFrameSegmentView: NSView {
         let left = bounds.minX + inset
         let right = bounds.maxX - inset
         let top = bounds.minY + inset
-        // Non-bottom segments run their side edges past the row into the
-        // intercell gap so consecutive rows' edges meet.
-        let overdrawnBottom = bounds.maxY + Self.rowGapOverdraw
+        // The frame of a non-bottom segment already extends into the
+        // intercell gap (frameHeight(forContentHeight:)), so the side edges
+        // run to the bounds' end and meet the next row's slice.
+        let joinedBottom = bounds.maxY
         let bottom = bounds.maxY - inset
 
         switch segment {
         case .top:
-            path.move(to: NSPoint(x: left, y: overdrawnBottom))
+            path.move(to: NSPoint(x: left, y: joinedBottom))
             path.line(to: NSPoint(x: left, y: top + radius))
             path.appendArc(
                 withCenter: NSPoint(x: left + radius, y: top + radius),
@@ -77,12 +95,12 @@ final class SidebarGroupFrameSegmentView: NSView {
                 withCenter: NSPoint(x: right - radius, y: top + radius),
                 radius: radius, startAngle: 270, endAngle: 360, clockwise: false
             )
-            path.line(to: NSPoint(x: right, y: overdrawnBottom))
+            path.line(to: NSPoint(x: right, y: joinedBottom))
         case .middle:
             path.move(to: NSPoint(x: left, y: bounds.minY))
-            path.line(to: NSPoint(x: left, y: overdrawnBottom))
+            path.line(to: NSPoint(x: left, y: joinedBottom))
             path.move(to: NSPoint(x: right, y: bounds.minY))
-            path.line(to: NSPoint(x: right, y: overdrawnBottom))
+            path.line(to: NSPoint(x: right, y: joinedBottom))
         case .bottom:
             path.move(to: NSPoint(x: left, y: bounds.minY))
             path.line(to: NSPoint(x: left, y: bottom - radius))
@@ -116,10 +134,10 @@ final class SidebarGroupFrameSegmentView: NSView {
         let fill: NSBezierPath
         switch segment {
         case .top:
-            let rect = NSRect(x: left, y: bounds.minY + inset, width: width, height: bounds.maxY + Self.rowGapOverdraw - (bounds.minY + inset))
+            let rect = NSRect(x: left, y: bounds.minY + inset, width: width, height: bounds.maxY - (bounds.minY + inset))
             fill = NSBezierPath(roundedRect: rect, corners: [.topLeft, .topRight], radius: radius)
         case .middle:
-            fill = NSBezierPath(rect: NSRect(x: left, y: bounds.minY, width: width, height: bounds.height + Self.rowGapOverdraw))
+            fill = NSBezierPath(rect: NSRect(x: left, y: bounds.minY, width: width, height: bounds.height))
         case .bottom:
             let rect = NSRect(x: left, y: bounds.minY, width: width, height: bounds.maxY - inset - bounds.minY)
             fill = NSBezierPath(roundedRect: rect, corners: [.bottomLeft, .bottomRight], radius: radius)

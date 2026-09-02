@@ -263,3 +263,15 @@ struct SidebarGroupTintedTitleTests {
         #expect(SidebarGroupFrameSegmentView.workspaceTitleColor(tintHex: nil, colorSchemeIsDark: false) == nil)
     }
 }
+
+@MainActor
+struct SidebarGroupFrameHeightTests {
+    @Test func nonBottomSegmentsExtendIntoTheIntercellGap() {
+        let gap = SidebarGroupFrameSegmentView.rowGapOverdraw
+        #expect(SidebarGroupFrameSegmentView.frameHeight(forContentHeight: 40, segment: .top) == 40 + gap)
+        #expect(SidebarGroupFrameSegmentView.frameHeight(forContentHeight: 40, segment: .middle) == 40 + gap)
+        #expect(SidebarGroupFrameSegmentView.frameHeight(forContentHeight: 40, segment: .bottom) == 40)
+        #expect(SidebarGroupFrameSegmentView.frameHeight(forContentHeight: 40, segment: .solo) == 40)
+        #expect(SidebarGroupFrameSegmentView.frameHeight(forContentHeight: 40, segment: nil) == 40)
+    }
+}

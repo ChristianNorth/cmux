@@ -1370,7 +1370,10 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
 
         if apply {
             contentContainer.frame = NSRect(x: 0, y: 0, width: width, height: y)
-            groupFrameView.frame = NSRect(x: 0, y: 0, width: width, height: y)
+            groupFrameView.frame = NSRect(
+                x: 0, y: 0, width: width,
+                height: SidebarGroupFrameSegmentView.frameHeight(forContentHeight: y, segment: model.groupFrameSegment)
+            )
             // Legacy parity: the SwiftUI row applies the group-member indent
             // OUTSIDE the row (padding before TabItemView), so the selection
             // and hover background shift right with the content. Indenting

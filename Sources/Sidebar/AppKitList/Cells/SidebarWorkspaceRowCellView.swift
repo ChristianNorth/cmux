@@ -491,7 +491,13 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
 #endif
         titleView.stringValue = boundedTitle
         titleView.font = .systemFont(ofSize: model.scaled(12.5), weight: .semibold)
-        titleView.textColor = palette.primaryText
+        // Grouped workspaces title in the group's color; the selected row keeps
+        // its selection foreground so the title stays readable on the card.
+        let groupTitleTint = model.isActive ? nil : SidebarGroupFrameSegmentView.workspaceTitleColor(
+            tintHex: model.groupTintHex,
+            colorSchemeIsDark: model.colorSchemeIsDark
+        )
+        titleView.textColor = groupTitleTint ?? palette.primaryText
 
         // Badges / spinner / close
         let showsSpinner = model.showsAgentActivity && snapshot.activeCodingAgentCount > 0

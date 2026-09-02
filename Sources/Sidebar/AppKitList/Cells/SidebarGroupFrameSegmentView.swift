@@ -30,6 +30,16 @@ final class SidebarGroupFrameSegmentView: NSView {
 
     override var isFlipped: Bool { true }
 
+    /// Workspace titles inside a colored group carry the group's tint:
+    /// darkened slightly for light backgrounds, lightened for dark ones so
+    /// both stay readable. Nil when the group has no color.
+    static func workspaceTitleColor(tintHex: String?, colorSchemeIsDark: Bool) -> NSColor? {
+        guard let base = tintHex.flatMap({ NSColor(hex: $0) }) else { return nil }
+        return colorSchemeIsDark
+            ? (base.blended(withFraction: 0.45, of: .white) ?? base)
+            : (base.blended(withFraction: 0.15, of: .black) ?? base)
+    }
+
     func configure(segment: SidebarGroupFrameSegment, tintHex: String?, colorSchemeIsDark: Bool) {
         self.segment = segment
         let base = tintHex.flatMap { NSColor(hex: $0) }

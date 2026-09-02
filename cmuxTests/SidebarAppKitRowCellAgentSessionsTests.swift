@@ -249,3 +249,15 @@ struct SidebarAppKitRowCellAgentSessionsTests {
         #expect(ungroupedFrames.allSatisfy(\.isHidden))
     }
 }
+
+@MainActor
+struct SidebarGroupTintedTitleTests {
+    @Test func groupTintColorsTheWorkspaceTitleInBothSchemes() throws {
+        let tint = NSColor(hex: "#24837B")!
+        let light = try #require(SidebarGroupFrameSegmentView.workspaceTitleColor(tintHex: "#24837B", colorSchemeIsDark: false))
+        let dark = try #require(SidebarGroupFrameSegmentView.workspaceTitleColor(tintHex: "#24837B", colorSchemeIsDark: true))
+        #expect(light.brightnessComponent < tint.brightnessComponent)
+        #expect(dark.brightnessComponent > tint.brightnessComponent)
+        #expect(SidebarGroupFrameSegmentView.workspaceTitleColor(tintHex: nil, colorSchemeIsDark: false) == nil)
+    }
+}

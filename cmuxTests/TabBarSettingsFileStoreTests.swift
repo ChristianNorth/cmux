@@ -1,4 +1,5 @@
 import Bonsplit
+import CmuxSettings
 import Foundation
 import Testing
 

@@ -399,7 +399,7 @@ final class SidebarGroupHeaderTableCellView: NSTableCellView {
         backgroundView.frame = bgFrame
         groupFrameView.frame = NSRect(
             x: 0, y: 0, width: bounds.width,
-            height: SidebarGroupFrameSegmentView.frameHeight(forContentHeight: bounds.height, segment: model?.groupFrameSegment)
+            height: SidebarGroupFrameSegmentView.frameHeight(forContentHeight: bounds.height, segment: model.groupFrameSegment)
         )
         let contentMaxX = bgFrame.maxX - SidebarWorkspaceListMetrics.rowContentHorizontalPadding
         let midY = bounds.height / 2

@@ -36666,6 +36666,16 @@ export default CMUXSessionRestore;
             toolInput["failure"] = failureDetailsForFeed
             event["tool_input"] = toolInput
         }
+        // Claude's Notification hook carries `notification_type`
+        // (`permission_prompt`, `idle_prompt`, ...). Forward it so the app can
+        // tell a real request for input from the ~60s idle nag.
+        if hookEventName == "Notification",
+           let rawObject = parsedInput.rawObject,
+           let notificationType = firstString(in: rawObject, keys: ["notification_type"]) {
+            var toolInput = event["tool_input"] as? [String: Any] ?? [:]
+            toolInput["notification_type"] = notificationType
+            event["tool_input"] = toolInput
+        }
         if let context = feedContextForEvent(
             source: source,
             hookEventName: hookEventName,

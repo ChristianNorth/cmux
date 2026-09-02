@@ -216,6 +216,7 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
         closeButton.onClick = { [weak self] in self?.actions?.commands.closeWorkspace() }
         contentContainer.addSubview(closeButton)
         titleAgeView.alignment = .right
+        titleAgeView.lineBreakMode = .byClipping
         titleAgeView.isHidden = true
         contentContainer.addSubview(titleAgeView)
         agentSessionsSection.onFocusSession = { [weak self] panelId in

@@ -29,6 +29,7 @@ final class SidebarRowAgentSessionLine: NSControl {
         addSubview(dotView)
         addSubview(titleView)
         ageView.alignment = .right
+        ageView.lineBreakMode = .byClipping
         addSubview(ageView)
         promptView.isHidden = true
         addSubview(promptView)
@@ -51,8 +52,15 @@ final class SidebarRowAgentSessionLine: NSControl {
     /// The age column is sized for the widest template so a ticking age never
     /// moves the title or changes the line's height.
     static func ageColumnWidth(font: NSFont) -> CGFloat {
+        // Measure through a text field cell so its horizontal padding is included;
+        // a bare attributed-string width leaves the widest template truncated.
         let widest = SidebarAgentSessionAgeFormatter.columnTemplates
-            .map { NSAttributedString(string: $0, attributes: [.font: font]).size().width }
+            .map { template -> CGFloat in
+                let cell = NSTextFieldCell(textCell: template)
+                cell.font = font
+                cell.lineBreakMode = .byClipping
+                return cell.cellSize.width
+            }
             .max() ?? 0
         return ceil(widest) + 2
     }

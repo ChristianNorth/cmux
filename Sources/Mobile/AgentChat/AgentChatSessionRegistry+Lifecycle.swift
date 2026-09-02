@@ -84,6 +84,11 @@ extension AgentChatSessionRegistry {
             // Compaction is lifecycle telemetry. It can occur while a session
             // is idle, so it must not create a synthetic working state.
             return previous
+        case .notification where Self.notificationType(of: event) == "idle_prompt":
+            // Claude's ~60s idle reminder is not a request for input: an idle
+            // session stays idle, and one still running background work stays
+            // working (the CLI suppresses the needs-input pill the same way).
+            return previous
         case .permissionRequest, .askUserQuestion, .exitPlanMode, .notification:
             if case .needsInput = previous { return previous }
             return .needsInput(since: event.receivedAt)
@@ -96,6 +101,17 @@ extension AgentChatSessionRegistry {
         case .sessionEnd:
             return .ended
         }
+    }
+
+    /// `tool_input.notification_type` of a Claude Notification hook event
+    /// (`permission_prompt`, `idle_prompt`, ...), forwarded by the CLI.
+    nonisolated static func notificationType(of event: WorkstreamEvent) -> String? {
+        guard let json = event.toolInputJSON,
+              let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return object["notification_type"] as? String
     }
 
     nonisolated static func stateIsEnded(_ state: ChatAgentState) -> Bool {

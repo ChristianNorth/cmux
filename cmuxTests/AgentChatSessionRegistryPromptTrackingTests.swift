@@ -88,6 +88,39 @@ struct AgentChatSessionRegistryPromptTrackingTests {
     }
 
     @MainActor
+    @Test func idleReminderNotificationsDoNotFlipAnIdleSessionToNeedsInput() {
+        let registry = AgentChatSessionRegistry()
+        let sessionID = "99999999-9999-9999-9999-999999999999"
+        let surfaceID = UUID().uuidString
+        _ = registry.noteHookEvent(promptEvent(sessionID: sessionID, surfaceID: surfaceID, toolInputJSON: #"{"prompt":"go"}"#, at: t1))
+        _ = registry.noteHookEvent(WorkstreamEvent(
+            sessionId: sessionID, hookEventName: .stop, source: "claude", surfaceId: surfaceID, receivedAt: t1.addingTimeInterval(5)
+        ))
+        #expect(registry.record(sessionID: sessionID)?.state == .idle)
+
+        let idleNag = registry.noteHookEvent(WorkstreamEvent(
+            sessionId: sessionID, hookEventName: .notification, source: "claude", surfaceId: surfaceID,
+            toolInputJSON: #"{"notification_type":"idle_prompt"}"#, receivedAt: t1.addingTimeInterval(65)
+        ))
+        #expect(idleNag.state == .idle)
+
+        let permission = registry.noteHookEvent(WorkstreamEvent(
+            sessionId: sessionID, hookEventName: .notification, source: "claude", surfaceId: surfaceID,
+            toolInputJSON: #"{"notification_type":"permission_prompt"}"#, receivedAt: t1.addingTimeInterval(70)
+        ))
+        if case .needsInput = permission.state {} else {
+            Issue.record("permission_prompt should mark the session as needing input, got \(permission.state)")
+        }
+
+        let untyped = AgentChatSessionRegistry()
+        _ = untyped.noteHookEvent(WorkstreamEvent(sessionId: "s", hookEventName: .sessionStart, source: "claude", surfaceId: surfaceID, receivedAt: t1))
+        let legacy = untyped.noteHookEvent(WorkstreamEvent(sessionId: "s", hookEventName: .notification, source: "claude", surfaceId: surfaceID, receivedAt: t2))
+        if case .needsInput = legacy.state {} else {
+            Issue.record("a Notification without a type keeps the old needs-input semantics")
+        }
+    }
+
+    @MainActor
     @Test func transcriptTailFillsTitleButNeverOverridesAHookPrompt() {
         let registry = AgentChatSessionRegistry()
         let sessionID = "44444444-4444-4444-4444-444444444444"

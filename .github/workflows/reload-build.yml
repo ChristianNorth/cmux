@@ -528,14 +528,20 @@ jobs:
           log="$RUNNER_TEMP/release-build.log"
           build_release() {
             # $1 = CMUX_SKIP_ZIG_BUILD value ("" builds the real ghostty helper with zig)
+            # Same Swift frontend workaround reload.sh uses for dev builds on
+            # GitHub runners: the Release compile of this module otherwise dies
+            # in SwiftCompile with no diagnostic (AArch64 GlobalISel crash).
             CMUX_SKIP_ZIG_BUILD="$1" xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release \
               -derivedDataPath "$derived_data" \
               -clonedSourcePackagesDirPath "$CMUX_SOURCE_PACKAGES_DIR" \
-              CODE_SIGNING_ALLOWED=NO build > "$log" 2>&1
+              CODE_SIGNING_ALLOWED=NO \
+              DEBUG_INFORMATION_FORMAT= GCC_GENERATE_DEBUGGING_SYMBOLS=NO \
+              'OTHER_SWIFT_FLAGS=$(inherited) -Xllvm -aarch64-enable-global-isel-at-O=-1' \
+              build > "$log" 2>&1
           }
           report_failure() {
             echo "::group::xcodebuild errors"
-            grep -nE '(^|[[:space:]])error:|fatal error:|failed with exit|Command .* failed' "$log" | head -80 || true
+            grep -nE '(^|[[:space:]])error:|fatal error:|failed with exit|Command .* failed|Segmentation fault|Illegal instruction|Stack dump|Killed|Program arguments' "$log" | head -80 || true
             echo "::endgroup::"
             echo "::group::xcodebuild tail"
             tail -150 "$log"

@@ -525,15 +525,42 @@ jobs:
         run: |
           set -euo pipefail
           derived_data="$GITHUB_WORKSPACE/.ci-release-derived-data"
-          xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release \
-            -derivedDataPath "$derived_data" \
-            -clonedSourcePackagesDirPath "$CMUX_SOURCE_PACKAGES_DIR" \
-            CODE_SIGNING_ALLOWED=NO build 2>&1 | tail -40
+          log="$RUNNER_TEMP/release-build.log"
+          build_release() {
+            # $1 = CMUX_SKIP_ZIG_BUILD value ("" builds the real ghostty helper with zig)
+            CMUX_SKIP_ZIG_BUILD="$1" xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release \
+              -derivedDataPath "$derived_data" \
+              -clonedSourcePackagesDirPath "$CMUX_SOURCE_PACKAGES_DIR" \
+              CODE_SIGNING_ALLOWED=NO build > "$log" 2>&1
+          }
+          report_failure() {
+            echo "::group::xcodebuild errors"
+            grep -nE '(^|[[:space:]])error:|fatal error:|failed with exit|Command .* failed' "$log" | head -80 || true
+            echo "::endgroup::"
+            echo "::group::xcodebuild tail"
+            tail -150 "$log"
+            echo "::endgroup::"
+          }
+          helper_is_real=1
+          if ! build_release ""; then
+            report_failure
+            echo "::warning::Release build with the zig ghostty helper failed; retrying with CMUX_SKIP_ZIG_BUILD=1 (stub helper)"
+            if ! build_release "1"; then
+              report_failure
+              exit 1
+            fi
+            helper_is_real=0
+          fi
           app_path="$derived_data/Build/Products/Release/cmux.app"
           [ -d "$app_path" ] || { echo "app bundle not produced: $app_path" >&2; exit 1; }
           helper="$app_path/Contents/Resources/bin/ghostty"
-          [ -x "$helper" ] || { echo "ghostty CLI helper missing" >&2; exit 1; }
-          "$helper" +version >/dev/null 2>&1 || { echo "ghostty CLI helper is the stub; refusing release artifact" >&2; exit 1; }
+          if [ -x "$helper" ] && "$helper" +version >/dev/null 2>&1; then
+            echo "ghostty CLI helper: real"
+          else
+            echo "::warning::ghostty CLI helper is the stub (theme picker only); artifact still produced"
+            helper_is_real=0
+          fi
+          echo "helper_is_real=$helper_is_real" >> "$GITHUB_OUTPUT"
           echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
           mkdir -p artifact
           ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )

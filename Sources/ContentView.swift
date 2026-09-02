@@ -10955,9 +10955,10 @@ struct VerticalTabsSidebar: View, Equatable {
     // and the parked click would wait on unrelated invalidation
     // (issue #9690: taps only landed after an app focus cycle).
     @State private var appKitTableApplyRequestToken: UInt64 = 0
-    /// The pane of the session the user most recently typed into anywhere
-    /// (agent session rows show its last prompt and a marker).
-    @State private var lastTypedAgentPanelId: UUID?
+    /// Panes of the three sessions the user most recently typed into, most
+    /// recent first (agent session rows mark them ◀ / ‹ / ‹; the first also
+    /// shows its last prompt everywhere).
+    @State private var lastTypedAgentPanelIds: [UUID] = []
     /// Bumped once a minute so agent session ages re-render; the age lives in
     /// a fixed-width column, so this never re-measures row heights.
     @State private var sidebarAgentAgeTick: UInt64 = 0
@@ -11290,7 +11291,7 @@ struct VerticalTabsSidebar: View, Equatable {
         let workspaceGroupMenuSnapshot: WorkspaceGroupMenuSnapshot
         let workspaceRenderItems: [SidebarWorkspaceRenderItem]
         let visibleWorkspaceRowIds: [UUID]
-        let lastTypedAgentPanelId: UUID?
+        let lastTypedAgentPanelIds: [UUID]
         /// The clock agent session ages are formatted against for this pass.
         let agentSessionNow: Date
 
@@ -11466,7 +11467,7 @@ struct VerticalTabsSidebar: View, Equatable {
             workspaceGroupMenuSnapshot: workspaceGroupMenuSnapshot,
             workspaceRenderItems: workspaceRenderItems,
             visibleWorkspaceRowIds: visibleWorkspaceRowIds,
-            lastTypedAgentPanelId: lastTypedAgentPanelId,
+            lastTypedAgentPanelIds: lastTypedAgentPanelIds,
             agentSessionNow: Date()
         )
         let _ = SidebarProfilingSignposts.end(signpost)
@@ -11610,9 +11611,9 @@ struct VerticalTabsSidebar: View, Equatable {
             for workspace in renderContext.tabs where event.affects(workspace) {
                 scheduleWorkspaceSnapshotRefresh(workspaceId: workspace.id)
             }
-            let next = AppDelegate.shared?.resolvedLastTypedAgentSession()?.panelId
-            if lastTypedAgentPanelId != next {
-                lastTypedAgentPanelId = next
+            let next = AppDelegate.shared?.resolvedLastTypedAgentSessions(limit: 3).map(\.panelId) ?? []
+            if lastTypedAgentPanelIds != next {
+                lastTypedAgentPanelIds = next
             }
         }
         .onReceive(sidebarAgentAgeTimer) { _ in
@@ -12023,14 +12024,30 @@ struct VerticalTabsSidebar: View, Equatable {
             canCreateEmptyGroup: tabManager.selectedTab?.isRemoteTmuxMirror != true,
             notificationIndex: notificationIndex
         )
-        return renderContext.workspaceRenderItems.compactMap { item -> SidebarWorkspaceTableRowConfiguration? in
+        let groupFrameSegments = SidebarGroupFrameSegment.segments(
+            forRenderItems: renderContext.workspaceRenderItems,
+            groupIdByWorkspaceId: renderContext.workspaceGroupIdByWorkspaceId,
+            collapsedGroupIds: Set(renderContext.workspaceGroups.filter(\.isCollapsed).map(\.id))
+        )
+        // Member rows tint their outline slice the way the header does
+        // (explicit group color, else the cwd-resolved config color).
+        let groupTintHexById: [UUID: String] = Dictionary(uniqueKeysWithValues: renderContext.workspaceGroups.compactMap { group in
+            let anchorCwd = group.liveAnchorWorkspaceId
+                .flatMap { renderContext.workspaceById[$0]?.currentDirectory }
+            let tint = group.customColor
+                ?? cmuxConfigStore.resolveWorkspaceGroupConfig(forCwd: anchorCwd)?.color
+            return tint.map { (group.id, $0) }
+        })
+        return renderContext.workspaceRenderItems.indices.compactMap { index -> SidebarWorkspaceTableRowConfiguration? in
+            let item = renderContext.workspaceRenderItems[index]
             switch item {
             case .groupHeader(let groupId, _):
                 guard let group = renderContext.workspaceGroupById[groupId] else { return nil }
                 return sidebarWorkspaceGroupTableConfiguration(
                     group: group,
                     memberWorkspaceIds: renderContext.memberWorkspaceIdsByGroupId[groupId] ?? [],
-                    renderContext: renderContext
+                    renderContext: renderContext,
+                    groupFrameSegment: groupFrameSegments[index]
                 )
             case .workspace(let workspaceId):
                 guard let workspace = renderContext.workspaceById[workspaceId],
@@ -12039,7 +12056,9 @@ struct VerticalTabsSidebar: View, Equatable {
                     workspace,
                     input: input,
                     listSnapshot: listSnapshot,
-                    renderContext: renderContext
+                    renderContext: renderContext,
+                    groupFrameSegment: groupFrameSegments[index],
+                    groupTintHex: input.groupId.flatMap { groupTintHexById[$0] }
                 )
             }
         }
@@ -12235,7 +12254,9 @@ struct VerticalTabsSidebar: View, Equatable {
         _ tab: Workspace,
         input: SidebarWorkspaceRowInput,
         listSnapshot: SidebarWorkspaceRowsSnapshot,
-        renderContext: WorkspaceListRenderContext
+        renderContext: WorkspaceListRenderContext,
+        groupFrameSegment: SidebarGroupFrameSegment? = nil,
+        groupTintHex: String? = nil
     ) -> SidebarWorkspaceTableRowConfiguration {
         let environment = renderContext.environment
         let rowSnapshot = input.rowSnapshot(list: listSnapshot)
@@ -12246,7 +12267,7 @@ struct VerticalTabsSidebar: View, Equatable {
         }()
         let agentSessionPresenter = SidebarRowAgentSessionPresenter(
             now: renderContext.agentSessionNow,
-            lastTypedPanelId: renderContext.lastTypedAgentPanelId
+            lastTypedPanelIds: renderContext.lastTypedAgentPanelIds
         )
         let model = SidebarWorkspaceRowModel(
             workspaceId: input.workspaceId,
@@ -12279,7 +12300,8 @@ struct VerticalTabsSidebar: View, Equatable {
             isMetadataExpanded: expandedMetadataWorkspaceIds.contains(tab.id),
             isMarkdownExpanded: expandedMarkdownWorkspaceIds.contains(tab.id),
             agentSessionRows: agentSessionPresenter.rows(for: input.workspace.agentSessions, isActive: input.isActive),
-            newestAgentSessionAgeText: agentSessionPresenter.newestAgeText(for: input.workspace.agentSessions)
+            groupFrameSegment: groupFrameSegment,
+            groupTintHex: groupTintHex
         )
         let commands = SidebarWorkspaceRowCommands(
             tab: tab,
@@ -12428,13 +12450,23 @@ struct VerticalTabsSidebar: View, Equatable {
             environment: environment,
             unreadRebuild: {
                 [model, workspaceId = tab.id,
-                 showsNotificationMessage = input.settings.showsNotificationMessage] snapshot in
+                 showsNotificationMessage = input.settings.showsNotificationMessage,
+                 sessions = input.workspace.agentSessions,
+                 isActive = input.isActive,
+                 agentSessionPresenter] snapshot in
                 let summary = snapshot.summary(forWorkspaceId: workspaceId)
                 var fresh = model
                 fresh.unreadCount = summary.unreadCount
                 fresh.latestNotificationText = showsNotificationMessage
                     ? summary.latestNotificationText
                     : nil
+                // A finished session whose pane has an unread notification
+                // draws the blue ball until the pane is focused.
+                var presenter = agentSessionPresenter
+                presenter.unreadPanelIds = Set(sessions.map(\.panelId).filter {
+                    snapshot.hasUnreadNotification(forWorkspaceId: workspaceId, surfaceId: $0)
+                })
+                fresh.agentSessionRows = presenter.rows(for: sessions, isActive: isActive)
                 return fresh
             }
         )

@@ -9,7 +9,8 @@ extension VerticalTabsSidebar {
     func sidebarWorkspaceGroupTableConfiguration(
         group: WorkspaceGroup,
         memberWorkspaceIds: [UUID],
-        renderContext: WorkspaceListRenderContext
+        renderContext: WorkspaceListRenderContext,
+        groupFrameSegment: SidebarGroupFrameSegment? = nil
     ) -> SidebarWorkspaceTableRowConfiguration {
         let settings = renderContext.tabItemSettings
         let anchorId = group.anchorWorkspaceId
@@ -87,6 +88,7 @@ extension VerticalTabsSidebar {
             iconSymbol: effectiveIcon,
             tintHex: effectiveColor,
             isCollapsed: group.isCollapsed,
+            groupFrameSegment: groupFrameSegment,
             isPinned: group.isPinned,
             isAnchorActive: isAnchorActive,
             isMultiSelected: isMultiSelected,

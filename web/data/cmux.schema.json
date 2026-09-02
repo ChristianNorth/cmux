@@ -1135,7 +1135,7 @@
         "showAgentSessions": {
           "type": "boolean",
           "default": true,
-          "description": "List each workspace's live coding-agent sessions under its title: a state dot, the agent's own title, an age, and (for the selected workspace and the session you last typed into) your last prompt."
+          "description": "List each workspace's live coding-agent sessions under its title: the agent's own title (blue while running), an age with orange recency markers, attention balls (red needs-input, blue unread), and (for the selected workspace and the session you last typed into) your last prompt."
         },
         "loadingSpinnerPosition": {
           "type": "string",

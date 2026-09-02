@@ -55,50 +55,63 @@ struct SidebarRowAgentSessionPresenterTests {
     }
 
     @Test func promptLineHiddenOnInactiveWorkspaces() {
-        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: nil)
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [])
             .rows(for: [session()], isActive: false)
         #expect(rows.count == 1)
         #expect(rows[0].promptLine == nil)
         #expect(rows[0].ageText == "12m")
-        #expect(!rows[0].isLastTyped)
+        #expect(rows[0].recencyRank == nil)
         #expect(rows[0].toolTip == "Fix the login bug\n\nfix the login bug")
     }
 
     @Test func promptLineShownOnTheActiveWorkspace() {
-        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: nil)
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [])
             .rows(for: [session()], isActive: true)
         #expect(rows[0].promptLine == "↳ fix the login bug")
     }
 
-    @Test func lastTypedSessionShowsPromptAndMarkerEvenWhenInactive() {
-        let panelId = UUID()
-        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: panelId)
-            .rows(for: [session(panelId: panelId), session()], isActive: false)
-        #expect(rows[0].isLastTyped)
+    @Test func recencyRanksFollowTheLastTypedOrder() {
+        let first = UUID(), second = UUID(), third = UUID(), other = UUID()
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [first, second, third])
+            .rows(
+                for: [session(panelId: third), session(panelId: other), session(panelId: first), session(panelId: second)],
+                isActive: false
+            )
+        #expect(rows.map(\.recencyRank) == [2, nil, 0, 1])
+        #expect(SidebarRowAgentSessionDisplay.markerGlyph(forRecencyRank: 0) == "◀")
+        #expect(SidebarRowAgentSessionDisplay.markerGlyph(forRecencyRank: 1) == "‹")
+        #expect(SidebarRowAgentSessionDisplay.markerGlyph(forRecencyRank: 2) == "‹")
+    }
+
+    @Test func onlyTheMostRecentSessionShowsItsPromptWhenInactive() {
+        let first = UUID(), second = UUID()
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [first, second])
+            .rows(for: [session(panelId: first), session(panelId: second)], isActive: false)
         #expect(rows[0].promptLine == "↳ fix the login bug")
-        #expect(rows[0].ageText == "12m ◀")
-        #expect(!rows[1].isLastTyped)
         #expect(rows[1].promptLine == nil)
-        #expect(rows[1].ageText == "12m")
+    }
+
+    @Test func unreadBallShowsOnlyForIdleSessionsWithUnreadNotifications() {
+        let idleUnread = UUID(), runningUnread = UUID(), idleRead = UUID()
+        var presenter = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [])
+        presenter.unreadPanelIds = [idleUnread, runningUnread]
+        let rows = presenter.rows(
+            for: [
+                session(panelId: idleUnread, state: .idle),
+                session(panelId: runningUnread, state: .running),
+                session(panelId: idleRead, state: .idle),
+            ],
+            isActive: false
+        )
+        #expect(rows.map(\.showsUnreadBall) == [true, false, false])
+        #expect(rows[0].accessibilityLabel.hasSuffix("unread"))
     }
 
     @Test func missingPromptYieldsNoPromptLineAndATitleOnlyTooltip() {
-        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: nil)
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [])
             .rows(for: [session(lastPrompt: nil)], isActive: true)
         #expect(rows[0].promptLine == nil)
         #expect(rows[0].toolTip == "Fix the login bug")
-    }
-
-    @Test func newestAgeUsesTheMostRecentSession() {
-        let presenter = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: nil)
-        #expect(presenter.newestAgeText(for: [session(minutesAgo: 90), session(minutesAgo: 3)]) == "3m")
-        #expect(presenter.newestAgeText(for: []) == nil)
-    }
-
-    @Test func accessibilityLabelNamesAgentTitleStateAndAge() {
-        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelId: nil)
-            .rows(for: [session(state: .needsInput)], isActive: false)
-        #expect(rows[0].accessibilityLabel == "Claude: Fix the login bug, needs input, 12m")
     }
 }
 
@@ -109,14 +122,15 @@ struct SidebarWorkspaceRowModelAgentSessionTests {
             title: "Title",
             state: .idle,
             ageText: ageText,
-            isLastTyped: false,
+            recencyRank: nil,
+            showsUnreadBall: false,
             promptLine: promptLine,
             toolTip: "Title",
-            accessibilityLabel: "Claude: Title, idle, \(ageText)"
+            accessibilityLabel: "Claude: Title, idle"
         )
     }
 
-    private func model(rows: [SidebarRowAgentSessionDisplay], newestAge: String?) -> SidebarWorkspaceRowModel {
+    private func model(rows: [SidebarRowAgentSessionDisplay], groupFrameSegment: SidebarGroupFrameSegment? = nil) -> SidebarWorkspaceRowModel {
         let settings = SidebarTabItemSettingsSnapshot(defaults: UserDefaults(suiteName: UUID().uuidString)!)
         let snapshot = SidebarWorkspaceSnapshotRefreshPolicyTests.snapshot()
         return SidebarWorkspaceRowModel(
@@ -150,20 +164,94 @@ struct SidebarWorkspaceRowModelAgentSessionTests {
             isMetadataExpanded: false,
             isMarkdownExpanded: false,
             agentSessionRows: rows,
-            newestAgentSessionAgeText: newestAge
+            groupFrameSegment: groupFrameSegment
         )
     }
 
     @Test func ageTicksAreHeightEquivalentButNotEqual() {
-        let a = model(rows: [display(ageText: "12m", promptLine: nil)], newestAge: "12m")
-        let b = model(rows: [display(ageText: "13m", promptLine: nil)], newestAge: "13m")
+        let a = model(rows: [display(ageText: "12m", promptLine: nil)])
+        let b = model(rows: [display(ageText: "13m", promptLine: nil)])
         #expect(a != b)
         #expect(a.hasHeightEquivalentContent(to: b))
     }
 
     @Test func promptLinePresenceChangesHeightEquivalence() {
-        let a = model(rows: [display(ageText: "12m", promptLine: nil)], newestAge: "12m")
-        let b = model(rows: [display(ageText: "12m", promptLine: "↳ prompt")], newestAge: "12m")
+        let a = model(rows: [display(ageText: "12m", promptLine: nil)])
+        let b = model(rows: [display(ageText: "12m", promptLine: "↳ prompt")])
         #expect(!a.hasHeightEquivalentContent(to: b))
+    }
+
+    @Test func groupFrameSegmentsAreHeightEquivalent() {
+        let a = model(rows: [], groupFrameSegment: .middle)
+        let b = model(rows: [], groupFrameSegment: .bottom)
+        #expect(a != b)
+        #expect(a.hasHeightEquivalentContent(to: b))
+    }
+}
+
+struct SidebarGroupFrameSegmentAssemblyTests {
+    @Test func headerOpensMembersContinueAndTheLastMemberCloses() {
+        let group = UUID(), a = UUID(), b = UUID(), loose = UUID()
+        let items: [SidebarWorkspaceRenderItem] = [
+            .groupHeader(groupId: group, anchorWorkspaceId: a),
+            .workspace(workspaceId: a),
+            .workspace(workspaceId: b),
+            .workspace(workspaceId: loose),
+        ]
+        let segments = SidebarGroupFrameSegment.segments(
+            forRenderItems: items,
+            groupIdByWorkspaceId: [a: group, b: group, loose: nil],
+            collapsedGroupIds: []
+        )
+        #expect(segments == [.top, .middle, .bottom, nil])
+    }
+
+    @Test func collapsedAndEmptyGroupsDrawTheWholeRectangle() {
+        let collapsed = UUID(), empty = UUID(), member = UUID()
+        let items: [SidebarWorkspaceRenderItem] = [
+            .groupHeader(groupId: collapsed, anchorWorkspaceId: member),
+            .groupHeader(groupId: empty, anchorWorkspaceId: member),
+            .workspace(workspaceId: member),
+        ]
+        let segments = SidebarGroupFrameSegment.segments(
+            forRenderItems: items,
+            groupIdByWorkspaceId: [member: nil],
+            collapsedGroupIds: [collapsed]
+        )
+        #expect(segments == [.solo, .solo, nil])
+    }
+
+    @Test func adjacentGroupsCloseAtTheBoundary() {
+        let g1 = UUID(), g2 = UUID(), a = UUID(), b = UUID()
+        let items: [SidebarWorkspaceRenderItem] = [
+            .groupHeader(groupId: g1, anchorWorkspaceId: a),
+            .workspace(workspaceId: a),
+            .groupHeader(groupId: g2, anchorWorkspaceId: b),
+            .workspace(workspaceId: b),
+        ]
+        let segments = SidebarGroupFrameSegment.segments(
+            forRenderItems: items,
+            groupIdByWorkspaceId: [a: g1, b: g2],
+            collapsedGroupIds: []
+        )
+        #expect(segments == [.top, .bottom, .top, .bottom])
+    }
+}
+
+struct SidebarAgentStatusPillFilterTests {
+    private func entry(_ key: String) -> SidebarStatusEntry {
+        SidebarStatusEntry(key: key, value: "Running")
+    }
+
+    @Test func agentLifecycleAndFeedAttentionPillsAreHiddenWithSessionRowsOn() {
+        let entries = [entry("claude_code"), entry("codex"), entry("cmux.feed.attention:claude_code"), entry("deploy")]
+        let filtered = SidebarWorkspaceSnapshotFactory.filteredStatusEntries(entries, showsAgentSessions: true)
+        #expect(filtered.map(\.key) == ["deploy"])
+    }
+
+    @Test func everythingPassesThroughWithSessionRowsOff() {
+        let entries = [entry("claude_code"), entry("deploy")]
+        let filtered = SidebarWorkspaceSnapshotFactory.filteredStatusEntries(entries, showsAgentSessions: false)
+        #expect(filtered.map(\.key) == ["claude_code", "deploy"])
     }
 }

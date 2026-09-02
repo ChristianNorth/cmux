@@ -15,6 +15,8 @@ struct SidebarGroupHeaderRowModel: Equatable, Hashable {
     let iconSymbol: String
     let tintHex: String?
     let isCollapsed: Bool
+    /// The header's slice of the group outline (.top, or .solo when collapsed).
+    var groupFrameSegment: SidebarGroupFrameSegment? = nil
     let isPinned: Bool
     let isAnchorActive: Bool
     let isMultiSelected: Bool

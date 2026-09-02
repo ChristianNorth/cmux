@@ -163,7 +163,7 @@ Both apply live through `cmux reload-config`.
 
 ## `sidebar.showAgentSessions`
 
-Lists each workspace's live coding-agent sessions (Claude Code, Codex) under the workspace title, one row per session in tab order: a state dot (running, idle, needs input), the agent's own title (Claude's `ai-title`, else the tab title), and an age since the session last moved. The selected workspace, and the one session you most recently typed into anywhere (marked `◀`), also show your last prompt on a second line. Clicking a row focuses that session's pane; `⌘⇧B` (`jumpToLastPrompt`) jumps back to the last-typed session.
+Lists each workspace's live coding-agent sessions (Claude Code, Codex) under the workspace title, one row per session in tab order: the agent's own title (Claude's `ai-title`, else the tab title) colored blue while the session runs, an age since the session last moved, and a leading ball only when the session demands attention (red = needs input, blue = finished with an unread notification). The three sessions you most recently typed into carry orange recency markers (`◀` on the most recent, `‹` on the next two); the selected workspace and the most recent session also show your last prompt on a second line. Grouped workspaces draw a rounded outline around each group, tinted with the group's color. Clicking a row focuses that session's pane; `⌘⇧B` (`jumpToLastPrompt`) jumps back to the last-typed session. The built-in per-agent status pills (Running / Idle / Needs input) are hidden while session rows are on.
 
 ```json
 {

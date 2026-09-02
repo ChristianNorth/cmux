@@ -90,7 +90,10 @@ struct SidebarWorkspaceSnapshotFactory {
             copyableSidebarSSHError: copyableSidebarSSHError,
             latestConversationMessage: workspace.latestConversationMessage,
             metadataEntries: detailVisibility.showsMetadata
-                ? workspace.sidebarStatusEntriesInDisplayOrder()
+                ? Self.filteredStatusEntries(
+                    workspace.sidebarStatusEntriesInDisplayOrder(),
+                    showsAgentSessions: settings.showsAgentSessions
+                )
                 : [],
             metadataBlocks: detailVisibility.showsMetadata
                 ? workspace.sidebarMetadataBlocksInDisplayOrder()
@@ -126,6 +129,21 @@ struct SidebarWorkspaceSnapshotFactory {
 
     private var presentationKey: SidebarWorkspaceSnapshotBuilder.PresentationKey {
         Self.presentationKey(settings: settings, showsAgentActivity: showsAgentActivity)
+    }
+
+    /// With agent session rows on, the rows carry each agent's state, so the
+    /// built-in per-agent status pills ("Running", "Idle", "Needs input" from
+    /// the claude_code/codex integrations and the Feed attention overlay) are
+    /// redundant and hidden. Every other pill passes through.
+    static func filteredStatusEntries(
+        _ entries: [SidebarStatusEntry],
+        showsAgentSessions: Bool
+    ) -> [SidebarStatusEntry] {
+        guard showsAgentSessions else { return entries }
+        return entries.filter { entry in
+            !AgentHibernationLifecycleStatusKeys.isAllowed(entry.key)
+                && !entry.key.hasPrefix("cmux.feed.attention:")
+        }
     }
 
     static func presentationKey(

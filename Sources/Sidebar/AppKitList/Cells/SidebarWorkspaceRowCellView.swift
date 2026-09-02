@@ -54,7 +54,8 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
     private let checklistSection = SidebarRowChecklistSection()
     // Agent session lines (under the title) and the workspace-level age on the title line.
     private let agentSessionsSection = SidebarRowAgentSessionsSection()
-    private let titleAgeView = SidebarRowTextView(lines: 1)
+    // Draws this row's slice of its group's rounded outline, behind everything.
+    private let groupFrameView = SidebarGroupFrameSegmentView()
     /// Presents the legacy SwiftUI `SidebarWorkspaceStatusPopover` from the
     /// manual status glyph (min width 200, max height 400, below the glyph).
     private let statusPopoverPresenter = SidebarRowSwiftUIPopoverPresenter()
@@ -215,10 +216,8 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
         contentContainer.addSubview(trailingBadge)
         closeButton.onClick = { [weak self] in self?.actions?.commands.closeWorkspace() }
         contentContainer.addSubview(closeButton)
-        titleAgeView.alignment = .right
-        titleAgeView.lineBreakMode = .byClipping
-        titleAgeView.isHidden = true
-        contentContainer.addSubview(titleAgeView)
+        groupFrameView.isHidden = true
+        addSubview(groupFrameView, positioned: .below, relativeTo: backgroundView)
         agentSessionsSection.onFocusSession = { [weak self] panelId in
             self?.actions?.focusAgentSurface(panelId)
         }
@@ -578,14 +577,18 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
             }
         }
 
-        // Agent sessions: the title-line age and one line per live session.
-        titleAgeView.isHidden = model.newestAgentSessionAgeText == nil
-        if let ageText = model.newestAgentSessionAgeText {
-            titleAgeView.stringValue = ageText
-            titleAgeView.font = .monospacedDigitSystemFont(ofSize: model.scaled(9.5), weight: .regular)
-            titleAgeView.textColor = palette.secondary(0.62, inactiveOpacity: 0.7)
-        }
+        // Agent sessions: one line per live session under the title.
         agentSessionsSection.configure(rows: model.agentSessionRows, model: model, palette: palette)
+
+        // Group outline slice.
+        groupFrameView.isHidden = model.groupFrameSegment == nil
+        if let segment = model.groupFrameSegment {
+            groupFrameView.configure(
+                segment: segment,
+                tintHex: model.groupTintHex,
+                colorSchemeIsDark: model.colorSchemeIsDark
+            )
+        }
 
         configureMetadata(model: model, palette: palette)
         configureLogAndProgress(model: model, palette: palette)
@@ -1158,20 +1161,7 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
         let closeHit = max(16, 16 * model.fontScale)
         let closeWidth = max(16, closeHit)
         let trailingSlotActive = !trailingBadge.isHidden || (trailingSpinner?.isHidden == false) || model.canCloseWorkspace
-        var titleMaxX = trailingSlotActive ? (trailing - closeWidth - titleRowSpacing) : trailing
-        // Workspace-level age (newest agent session activity), fixed width so
-        // a ticking value never moves the title.
-        if !titleAgeView.isHidden, let ageFont = titleAgeView.font {
-            let ageWidth = SidebarRowAgentSessionLine.ageColumnWidth(font: ageFont)
-            if apply {
-                let ageHeight = titleAgeView.sidebarNaturalCellSize.height
-                titleAgeView.frame = NSRect(
-                    x: titleMaxX - ageWidth, y: firstLineCenter - ageHeight / 2,
-                    width: ageWidth, height: ageHeight
-                )
-            }
-            titleMaxX -= ageWidth + titleRowSpacing
-        }
+        let titleMaxX = trailingSlotActive ? (trailing - closeWidth - titleRowSpacing) : trailing
         let titleWidth = max(10, titleMaxX - x)
         let renameField = renameSession?.field
         let titleHeight = renameField.map { ceil($0.intrinsicContentSize.height) }
@@ -1374,6 +1364,7 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
 
         if apply {
             contentContainer.frame = NSRect(x: 0, y: 0, width: width, height: y)
+            groupFrameView.frame = NSRect(x: 0, y: 0, width: width, height: y)
             // Legacy parity: the SwiftUI row applies the group-member indent
             // OUTSIDE the row (padding before TabItemView), so the selection
             // and hover background shift right with the content. Indenting

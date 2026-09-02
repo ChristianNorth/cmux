@@ -69,8 +69,10 @@ struct SidebarWorkspaceRowModel: Equatable {
     /// (`SidebarRowAgentSessionPresenter`). `var` only so
     /// `hasHeightEquivalentContent` can blank the ticking ages.
     var agentSessionRows: [SidebarRowAgentSessionDisplay] = []
-    /// Age of the newest session activity, drawn at the end of the title line.
-    var newestAgentSessionAgeText: String?
+    /// This row's slice of its group's rounded outline, nil when ungrouped.
+    var groupFrameSegment: SidebarGroupFrameSegment?
+    /// The group's tint for that outline.
+    var groupTintHex: String?
 
     var fontScale: CGFloat { settings.sidebarFontScale }
 
@@ -97,8 +99,11 @@ struct SidebarWorkspaceRowModel: Equatable {
         // changes the measured height, so a tick must not invalidate the cache.
         normalizedSelf.agentSessionRows = normalizedSelf.agentSessionRows.map { $0.neutralizingAge() }
         normalizedOther.agentSessionRows = normalizedOther.agentSessionRows.map { $0.neutralizingAge() }
-        normalizedSelf.newestAgentSessionAgeText = nil
-        normalizedOther.newestAgentSessionAgeText = nil
+        // The group outline draws within whatever height the content produced.
+        normalizedSelf.groupFrameSegment = nil
+        normalizedOther.groupFrameSegment = nil
+        normalizedSelf.groupTintHex = nil
+        normalizedOther.groupTintHex = nil
         return normalizedSelf == normalizedOther
     }
 }

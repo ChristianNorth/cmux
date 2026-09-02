@@ -13,26 +13,35 @@ extension AppDelegate {
         let tabManager: TabManager
     }
 
-    /// The most recently typed-into live session whose pane still exists in
-    /// some window. Records are ordered by their last hook prompt; the first
-    /// whose pane resolves wins. The record's stored workspace id is only a
-    /// hint (it goes stale across relaunches), the pane binding is authoritative.
-    func resolvedLastTypedAgentSession() -> ResolvedAgentSession? {
-        guard let service = TerminalController.shared.agentChatTranscriptService else { return nil }
+    /// The most recently typed-into live sessions whose panes still exist in
+    /// some window, most recent first. Records are ordered by their last hook
+    /// prompt; only those whose pane resolves count toward the limit. The
+    /// record's stored workspace id is only a hint (it goes stale across
+    /// relaunches), the pane binding is authoritative.
+    func resolvedLastTypedAgentSessions(limit: Int) -> [ResolvedAgentSession] {
+        guard limit > 0,
+              let service = TerminalController.shared.agentChatTranscriptService else { return [] }
+        var resolved: [ResolvedAgentSession] = []
         for record in service.lastTypedLiveSessions() {
             guard let panelId = record.surfaceID.flatMap(UUID.init(uuidString:)) else { continue }
             let preferredWorkspaceId = record.workspaceID.flatMap(UUID.init(uuidString:))
             guard let located = workspaceContainingPanel(panelId: panelId, preferredWorkspaceId: preferredWorkspaceId) else {
                 continue
             }
-            return ResolvedAgentSession(
+            resolved.append(ResolvedAgentSession(
                 record: record,
                 panelId: panelId,
                 workspace: located.workspace,
                 tabManager: located.tabManager
-            )
+            ))
+            if resolved.count == limit { break }
         }
-        return nil
+        return resolved
+    }
+
+    /// The single most recently typed-into live session, for the jump verbs.
+    func resolvedLastTypedAgentSession() -> ResolvedAgentSession? {
+        resolvedLastTypedAgentSessions(limit: 1).first
     }
 
     /// Selects the pane's workspace and focuses the pane, across windows.

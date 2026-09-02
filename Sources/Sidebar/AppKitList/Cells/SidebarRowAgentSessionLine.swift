@@ -1,32 +1,37 @@
 import AppKit
 
-/// One agent session line inside a sidebar workspace row: state dot, title
-/// (up to two lines), a fixed-width age column, and an optional last-prompt
-/// line. Owns its click (swallowed from the table row action) and focuses the
-/// session's pane.
+/// One agent session line inside a sidebar workspace row.
+///
+/// State lives in the title color (plain = idle, blue = running); the only
+/// leading ball is red for needs-input or blue for an unread finished
+/// session. The fixed-width age column carries an orange recency marker for
+/// the three sessions the user most recently typed into. Owns its click
+/// (swallowed from the table row action) and focuses the session's pane.
 @MainActor
 final class SidebarRowAgentSessionLine: NSControl {
     var onClick: (() -> Void)?
 
-    static let dotSide: CGFloat = 6
-    private static let dotGap: CGFloat = 6
+    static let ballSide: CGFloat = 7
+    private static let ballGap: CGFloat = 6
     private static let ageGap: CGFloat = 6
     private static let promptSpacing: CGFloat = 1
 
-    private let dotView = NSView()
+    private let ballView = NSView()
     private let titleView = SidebarRowTextView(lines: 2)
     private let ageView = SidebarRowTextView(lines: 1)
     private let promptView = SidebarRowTextView(lines: 1)
     private var ageColumnWidth: CGFloat = 0
+    private var showsBall = false
     private var titleFont: NSFont = .systemFont(ofSize: 10.5)
 
     override var isFlipped: Bool { true }
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        dotView.wantsLayer = true
-        dotView.layer?.cornerRadius = Self.dotSide / 2
-        addSubview(dotView)
+        ballView.wantsLayer = true
+        ballView.layer?.cornerRadius = Self.ballSide / 2
+        ballView.isHidden = true
+        addSubview(ballView)
         addSubview(titleView)
         ageView.alignment = .right
         ageView.lineBreakMode = .byClipping
@@ -41,16 +46,28 @@ final class SidebarRowAgentSessionLine: NSControl {
         fatalError("init(coder:) has not been implemented")
     }
 
-    static func dotColor(for state: SidebarAgentSessionSnapshot.State) -> NSColor {
-        switch state {
-        case .running: return NSColor(hex: "#e3b341") ?? .systemYellow
-        case .idle: return NSColor(hex: "#39d353") ?? .systemGreen
-        case .needsInput: return NSColor(hex: "#f85149") ?? .systemRed
-        }
+    /// Running titles are blue; everything else keeps the row's normal text color.
+    static func runningTitleColor(isActive: Bool, colorSchemeIsDark: Bool) -> NSColor {
+        if isActive { return NSColor(hex: "#9cc3ff") ?? .systemBlue }
+        return (colorSchemeIsDark ? NSColor(hex: "#6ca5f0") : NSColor(hex: "#2f6fd0")) ?? .systemBlue
     }
 
-    /// The age column is sized for the widest template so a ticking age never
-    /// moves the title or changes the line's height.
+    /// Needs-input ball: red. Unread-finished ball: blue.
+    static func ballColor(needsInput: Bool, isActive: Bool, colorSchemeIsDark: Bool) -> NSColor {
+        if needsInput {
+            return (isActive ? NSColor(hex: "#ff6b62") : NSColor(hex: "#d64540")) ?? .systemRed
+        }
+        return runningTitleColor(isActive: isActive, colorSchemeIsDark: colorSchemeIsDark)
+    }
+
+    /// Recency markers (◀ / ‹) draw in a distinct orange.
+    static func markerColor(isActive: Bool, colorSchemeIsDark: Bool) -> NSColor {
+        if isActive { return NSColor(hex: "#f5a15c") ?? .systemOrange }
+        return (colorSchemeIsDark ? NSColor(hex: "#e8853f") : NSColor(hex: "#da702c")) ?? .systemOrange
+    }
+
+    /// The age column is sized for the widest template so a ticking age or an
+    /// appearing marker never moves the title or changes the line's height.
     static func ageColumnWidth(font: NSFont) -> CGFloat {
         // Measure through a text field cell so its horizontal padding is included;
         // a bare attributed-string width leaves the widest template truncated.
@@ -72,13 +89,37 @@ final class SidebarRowAgentSessionLine: NSControl {
     ) {
         titleFont = .systemFont(ofSize: model.scaled(10.5), weight: .medium)
         let ageFont = NSFont.monospacedDigitSystemFont(ofSize: model.scaled(9.5), weight: .regular)
-        dotView.layer?.backgroundColor = Self.dotColor(for: display.state).cgColor
+        showsBall = display.state == .needsInput || display.showsUnreadBall
+        ballView.isHidden = !showsBall
+        if showsBall {
+            ballView.layer?.backgroundColor = Self.ballColor(
+                needsInput: display.state == .needsInput,
+                isActive: model.isActive,
+                colorSchemeIsDark: model.colorSchemeIsDark
+            ).cgColor
+        }
         titleView.stringValue = display.title
         titleView.font = titleFont
-        titleView.textColor = palette.secondary(0.92, inactiveOpacity: 0.95)
-        ageView.stringValue = display.ageText
-        ageView.font = ageFont
-        ageView.textColor = palette.secondary(0.62, inactiveOpacity: 0.7)
+        titleView.textColor = display.state == .running
+            ? Self.runningTitleColor(isActive: model.isActive, colorSchemeIsDark: model.colorSchemeIsDark)
+            : palette.secondary(0.92, inactiveOpacity: 0.95)
+        let age = NSMutableAttributedString(
+            string: display.ageText,
+            attributes: [
+                .font: ageFont,
+                .foregroundColor: palette.secondary(0.62, inactiveOpacity: 0.7),
+            ]
+        )
+        if let rank = display.recencyRank {
+            age.append(NSAttributedString(
+                string: " " + SidebarRowAgentSessionDisplay.markerGlyph(forRecencyRank: rank),
+                attributes: [
+                    .font: NSFont.systemFont(ofSize: model.scaled(9.5), weight: .heavy),
+                    .foregroundColor: Self.markerColor(isActive: model.isActive, colorSchemeIsDark: model.colorSchemeIsDark),
+                ]
+            ))
+        }
+        ageView.attributedStringValue = age
         ageColumnWidth = Self.ageColumnWidth(font: ageFont)
         promptView.isHidden = display.promptLine == nil
         if let promptLine = display.promptLine {
@@ -92,6 +133,13 @@ final class SidebarRowAgentSessionLine: NSControl {
         needsLayout = true
     }
 
+    /// Test seam: whether the leading attention ball (red needs-input or blue
+    /// unread) is visible.
+    var hasVisibleBall: Bool { !ballView.isHidden }
+
+    /// Test seam: the rendered age text including any recency marker.
+    var ageDisplayText: String { ageView.attributedStringValue.string }
+
     func resetForReuse() {
         onClick = nil
         toolTip = nil
@@ -99,18 +147,24 @@ final class SidebarRowAgentSessionLine: NSControl {
         ageView.stringValue = ""
         promptView.stringValue = ""
         promptView.isHidden = true
+        ballView.isHidden = true
+        showsBall = false
         alphaValue = 1
     }
 
+    private var titleInset: CGFloat {
+        showsBall ? Self.ballSide + Self.ballGap : 0
+    }
+
     private var titleWidth: CGFloat {
-        max(10, bounds.width - Self.dotSide - Self.dotGap - ageColumnWidth - Self.ageGap)
+        max(10, bounds.width - titleInset - ageColumnWidth - Self.ageGap)
     }
 
     func measuredHeight(width: CGFloat) -> CGFloat {
-        let titleWidth = max(10, width - Self.dotSide - Self.dotGap - ageColumnWidth - Self.ageGap)
+        let titleWidth = max(10, width - titleInset - ageColumnWidth - Self.ageGap)
         var height = titleView.measuredHeight(width: titleWidth)
         if !promptView.isHidden {
-            height += Self.promptSpacing + promptView.measuredHeight(width: max(10, width - Self.dotSide - Self.dotGap))
+            height += Self.promptSpacing + promptView.measuredHeight(width: max(10, width - titleInset))
         }
         return height
     }
@@ -120,11 +174,13 @@ final class SidebarRowAgentSessionLine: NSControl {
         let titleHeight = titleView.measuredHeight(width: titleWidth)
         let firstLineHeight = ceil(titleFont.ascender - titleFont.descender + titleFont.leading)
         let firstLineCenter = firstLineHeight / 2
-        dotView.frame = NSRect(
-            x: 0, y: firstLineCenter - Self.dotSide / 2,
-            width: Self.dotSide, height: Self.dotSide
-        )
-        let titleX = Self.dotSide + Self.dotGap
+        if showsBall {
+            ballView.frame = NSRect(
+                x: 0, y: firstLineCenter - Self.ballSide / 2,
+                width: Self.ballSide, height: Self.ballSide
+            )
+        }
+        let titleX = titleInset
         titleView.frame = NSRect(x: titleX, y: 0, width: titleWidth, height: titleHeight)
         let ageHeight = ageView.sidebarNaturalCellSize.height
         ageView.frame = NSRect(

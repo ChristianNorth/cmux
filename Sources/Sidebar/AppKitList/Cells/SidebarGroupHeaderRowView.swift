@@ -13,6 +13,9 @@ final class SidebarGroupHeaderTableCellView: NSTableCellView {
     static let reuseIdentifier = NSUserInterfaceItemIdentifier("SidebarGroupHeaderTableCellView")
 
     private let backgroundView = NSView()
+    // The header's slice of the group outline (top edge, or the whole
+    // rectangle when the group is collapsed). Behind every other subview.
+    private let groupFrameView = SidebarGroupFrameSegmentView()
     private let pinImageView = NSImageView()
     private let chevronButton = SidebarHeaderGlyphButton()
     private let iconImageView = NSImageView()
@@ -53,6 +56,8 @@ final class SidebarGroupHeaderTableCellView: NSTableCellView {
         // Drop indicators paint into the inter-row gap above/below the cell.
         layer?.masksToBounds = false
 
+        groupFrameView.isHidden = true
+        addSubview(groupFrameView)
         backgroundView.wantsLayer = true
         backgroundView.layer?.cornerRadius = 4
         backgroundView.layer?.cornerCurve = .continuous
@@ -144,6 +149,14 @@ final class SidebarGroupHeaderTableCellView: NSTableCellView {
         let colorScheme: ColorScheme = model.colorSchemeIsDark ? .dark : .light
         let colorResolver = SidebarAppearanceColorResolver()
 
+        groupFrameView.isHidden = model.groupFrameSegment == nil
+        if let segment = model.groupFrameSegment {
+            groupFrameView.configure(
+                segment: segment,
+                tintHex: model.tintHex,
+                colorSchemeIsDark: model.colorSchemeIsDark
+            )
+        }
         pinImageView.isHidden = !model.isPinned
         if model.isPinned {
             pinImageView.image = RenderableSystemSymbol.configuredAppKitImage(
@@ -384,6 +397,7 @@ final class SidebarGroupHeaderTableCellView: NSTableCellView {
         let outerPad = SidebarWorkspaceListMetrics.rowOuterHorizontalPadding
         let bgFrame = NSRect(x: outerPad, y: 0, width: bounds.width - outerPad * 2, height: bounds.height)
         backgroundView.frame = bgFrame
+        groupFrameView.frame = bounds
         let contentMaxX = bgFrame.maxX - SidebarWorkspaceListMetrics.rowContentHorizontalPadding
         let midY = bounds.height / 2
         var x = bgFrame.minX

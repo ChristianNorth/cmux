@@ -245,8 +245,10 @@ struct SidebarAppKitRowCellAgentSessionsTests {
         let ungrouped = Self.configuredCell(model: Self.makeModel(rows: []))
         let groupedFrames = Self.descendants(of: grouped).compactMap { $0 as? SidebarGroupFrameSegmentView }
         let ungroupedFrames = Self.descendants(of: ungrouped).compactMap { $0 as? SidebarGroupFrameSegmentView }
-        #expect(groupedFrames.contains { !$0.isHidden })
-        #expect(ungroupedFrames.allSatisfy(\.isHidden))
+        let hasVisibleGroupedFrame = groupedFrames.contains { !$0.isHidden }
+        let allUngroupedFramesHidden = ungroupedFrames.allSatisfy(\.isHidden)
+        #expect(hasVisibleGroupedFrame)
+        #expect(allUngroupedFramesHidden)
     }
 }
 

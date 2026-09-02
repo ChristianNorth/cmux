@@ -26,6 +26,7 @@ final class SidebarGroupFrameSegmentView: NSView {
 
     private var segment: SidebarGroupFrameSegment = .middle
     private var color: NSColor = .separatorColor
+    private var fillColor: NSColor = .clear
 
     override var isFlipped: Bool { true }
 
@@ -34,12 +35,15 @@ final class SidebarGroupFrameSegmentView: NSView {
         let base = tintHex.flatMap { NSColor(hex: $0) }
         let neutral = colorSchemeIsDark ? NSColor.white : NSColor.black
         self.color = (base ?? neutral).withAlphaComponent(base == nil ? 0.16 : 0.42)
+        // A faint wash of the group color so the frame reads as a card, not a wire.
+        self.fillColor = (base ?? neutral).withAlphaComponent(base == nil ? 0.03 : 0.045)
         needsDisplay = true
     }
 
     override func draw(_ dirtyRect: NSRect) {
         let radius = Self.cornerRadius
         let inset = Self.lineWidth / 2
+        drawFill(radius: radius, inset: inset)
         let path = NSBezierPath()
         path.lineWidth = Self.lineWidth
         let left = bounds.minX + inset
@@ -90,6 +94,68 @@ final class SidebarGroupFrameSegmentView: NSView {
         }
         color.setStroke()
         path.stroke()
+    }
+
+    /// The interior wash for this row's slice: rounded only on the edges this
+    /// segment owns, and overdrawn into the intercell gap below non-bottom
+    /// segments so consecutive rows' fills join seamlessly.
+    private func drawFill(radius: CGFloat, inset: CGFloat) {
+        let left = bounds.minX + inset
+        let right = bounds.maxX - inset
+        let width = right - left
+        let fill: NSBezierPath
+        switch segment {
+        case .top:
+            let rect = NSRect(x: left, y: bounds.minY + inset, width: width, height: bounds.maxY + Self.rowGapOverdraw - (bounds.minY + inset))
+            fill = NSBezierPath(roundedRect: rect, corners: [.topLeft, .topRight], radius: radius)
+        case .middle:
+            fill = NSBezierPath(rect: NSRect(x: left, y: bounds.minY, width: width, height: bounds.height + Self.rowGapOverdraw))
+        case .bottom:
+            let rect = NSRect(x: left, y: bounds.minY, width: width, height: bounds.maxY - inset - bounds.minY)
+            fill = NSBezierPath(roundedRect: rect, corners: [.bottomLeft, .bottomRight], radius: radius)
+        case .solo:
+            fill = NSBezierPath(roundedRect: NSRect(x: left, y: bounds.minY + inset, width: width, height: bounds.height - inset * 2), xRadius: radius, yRadius: radius)
+        }
+        fillColor.setFill()
+        fill.fill()
+    }
+}
+
+private extension NSBezierPath {
+    struct RoundedCorners: OptionSet {
+        let rawValue: Int
+        static let topLeft = RoundedCorners(rawValue: 1)
+        static let topRight = RoundedCorners(rawValue: 2)
+        static let bottomLeft = RoundedCorners(rawValue: 4)
+        static let bottomRight = RoundedCorners(rawValue: 8)
+    }
+
+    /// A rect with only the given corners rounded (flipped coordinates:
+    /// minY is the top edge).
+    convenience init(roundedRect rect: NSRect, corners: RoundedCorners, radius: CGFloat) {
+        self.init()
+        let topLeft = NSPoint(x: rect.minX, y: rect.minY)
+        let topRight = NSPoint(x: rect.maxX, y: rect.minY)
+        let bottomRight = NSPoint(x: rect.maxX, y: rect.maxY)
+        let bottomLeft = NSPoint(x: rect.minX, y: rect.maxY)
+        move(to: NSPoint(x: topLeft.x + (corners.contains(.topLeft) ? radius : 0), y: topLeft.y))
+        line(to: NSPoint(x: topRight.x - (corners.contains(.topRight) ? radius : 0), y: topRight.y))
+        if corners.contains(.topRight) {
+            appendArc(withCenter: NSPoint(x: topRight.x - radius, y: topRight.y + radius), radius: radius, startAngle: 270, endAngle: 360, clockwise: false)
+        }
+        line(to: NSPoint(x: bottomRight.x, y: bottomRight.y - (corners.contains(.bottomRight) ? radius : 0)))
+        if corners.contains(.bottomRight) {
+            appendArc(withCenter: NSPoint(x: bottomRight.x - radius, y: bottomRight.y - radius), radius: radius, startAngle: 0, endAngle: 90, clockwise: false)
+        }
+        line(to: NSPoint(x: bottomLeft.x + (corners.contains(.bottomLeft) ? radius : 0), y: bottomLeft.y))
+        if corners.contains(.bottomLeft) {
+            appendArc(withCenter: NSPoint(x: bottomLeft.x + radius, y: bottomLeft.y - radius), radius: radius, startAngle: 90, endAngle: 180, clockwise: false)
+        }
+        line(to: NSPoint(x: topLeft.x, y: topLeft.y + (corners.contains(.topLeft) ? radius : 0)))
+        if corners.contains(.topLeft) {
+            appendArc(withCenter: NSPoint(x: topLeft.x + radius, y: topLeft.y + radius), radius: radius, startAngle: 180, endAngle: 270, clockwise: false)
+        }
+        close()
     }
 }
 

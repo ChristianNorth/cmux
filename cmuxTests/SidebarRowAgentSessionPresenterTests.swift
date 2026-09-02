@@ -239,6 +239,7 @@ struct SidebarGroupFrameSegmentAssemblyTests {
     }
 }
 
+@MainActor
 struct SidebarAgentStatusPillFilterTests {
     private func entry(_ key: String) -> SidebarStatusEntry {
         SidebarStatusEntry(key: key, value: "Running")

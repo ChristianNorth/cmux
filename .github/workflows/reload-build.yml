@@ -519,44 +519,46 @@ jobs:
         if: ${{ inputs.platform == 'macos' && inputs.mode == 'release' }}
         id: build_macos_release
         env:
-          CMUX_SKIP_ZIG_BUILD: ""
           CMUX_GHOSTTYKIT_PREPROVISIONED: "1"
           CMUX_SOURCE_PACKAGES_DIR: ${{ github.workspace }}/.ci-source-packages
         run: |
           set -euo pipefail
           derived_data="$GITHUB_WORKSPACE/.ci-release-derived-data"
-          log="$RUNNER_TEMP/release-build.log"
+          logdir="$RUNNER_TEMP/release-build-logs"
+          mkdir -p "$logdir"
           build_release() {
-            # $1 = CMUX_SKIP_ZIG_BUILD value ("" builds the real ghostty helper with zig)
-            # Same Swift frontend workaround reload.sh uses for dev builds on
-            # GitHub runners: the Release compile of this module otherwise dies
-            # in SwiftCompile with no diagnostic (AArch64 GlobalISel crash).
+            # $1 = CMUX_SKIP_ZIG_BUILD ("" builds the real ghostty helper with zig)
+            # $2 = SWIFT_OPTIMIZATION_LEVEL   $3 = log name
+            # GlobalISel is disabled like reload.sh does for dev builds on GitHub runners.
             CMUX_SKIP_ZIG_BUILD="$1" xcodebuild -project cmux.xcodeproj -scheme cmux -configuration Release \
               -derivedDataPath "$derived_data" \
               -clonedSourcePackagesDirPath "$CMUX_SOURCE_PACKAGES_DIR" \
               CODE_SIGNING_ALLOWED=NO \
               DEBUG_INFORMATION_FORMAT= GCC_GENERATE_DEBUGGING_SYMBOLS=NO \
+              "SWIFT_OPTIMIZATION_LEVEL=$2" \
               'OTHER_SWIFT_FLAGS=$(inherited) -Xllvm -aarch64-enable-global-isel-at-O=-1' \
-              build > "$log" 2>&1
+              build > "$logdir/$3.log" 2>&1
           }
           report_failure() {
-            echo "::group::xcodebuild errors"
-            grep -nE '(^|[[:space:]])error:|fatal error:|failed with exit|Command .* failed|Segmentation fault|Illegal instruction|Stack dump|Killed|Program arguments' "$log" | head -80 || true
-            echo "::endgroup::"
-            echo "::group::xcodebuild tail"
-            tail -150 "$log"
+            echo "::group::xcodebuild errors ($1)"
+            grep -nE '(^|[[:space:]])error:|fatal error:|failed with exit|Command .* failed' "$logdir/$1.log" | head -40 || true
+            # The frontend crash context: the numbered "While ..." lines after each stack dump name the file.
+            grep -nE -A 14 '^Stack dump:$' "$logdir/$1.log" | grep -E '^[0-9]+[-:][0-9]+\.' | head -40 || true
             echo "::endgroup::"
           }
-          helper_is_real=1
-          if ! build_release ""; then
-            report_failure
-            echo "::warning::Release build with the zig ghostty helper failed; retrying with CMUX_SKIP_ZIG_BUILD=1 (stub helper)"
-            if ! build_release "1"; then
-              report_failure
-              exit 1
+          attempts=("real:-O:release-O-zig" "stub:-O:release-O" "stub:-Osize:release-Osize" "stub:-Onone:release-Onone")
+          built=""
+          for attempt in "${attempts[@]}"; do
+            IFS=: read -r helper opt name <<< "$attempt"
+            skip_zig=1; [ "$helper" = "real" ] && skip_zig=""
+            echo "==> release attempt: helper=$helper optimization=$opt"
+            if build_release "$skip_zig" "$opt" "$name"; then
+              built="$name"; break
             fi
-            helper_is_real=0
-          fi
+            report_failure "$name"
+            echo "::warning::release attempt $name failed"
+          done
+          [ -n "$built" ] || { echo "every release attempt failed" >&2; exit 1; }
           app_path="$derived_data/Build/Products/Release/cmux.app"
           [ -d "$app_path" ] || { echo "app bundle not produced: $app_path" >&2; exit 1; }
           helper="$app_path/Contents/Resources/bin/ghostty"
@@ -564,12 +566,21 @@ jobs:
             echo "ghostty CLI helper: real"
           else
             echo "::warning::ghostty CLI helper is the stub (theme picker only); artifact still produced"
-            helper_is_real=0
           fi
-          echo "helper_is_real=$helper_is_real" >> "$GITHUB_OUTPUT"
+          echo "built=$built" >> "$GITHUB_OUTPUT"
           echo "app_path=$app_path" >> "$GITHUB_OUTPUT"
           mkdir -p artifact
           ( cd "$(dirname "$app_path")" && ditto -c -k --sequesterRsrc --keepParent "$(basename "$app_path")" "$GITHUB_WORKSPACE/artifact/app.zip" )
+          echo "$built" > artifact/BUILD_VARIANT
+
+      - name: Upload release build logs
+        if: ${{ always() && inputs.platform == 'macos' && inputs.mode == 'release' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-build-logs-${{ inputs.tag }}
+          path: ${{ runner.temp }}/release-build-logs/
+          retention-days: 3
+          if-no-files-found: ignore
 
       # iOS links the CmuxIrohFFI xcframework (gitignored, built from the Rust
       # crate under Native/cmux-iroh). The macOS path builds it via

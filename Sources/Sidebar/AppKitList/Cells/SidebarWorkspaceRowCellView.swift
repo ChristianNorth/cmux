@@ -1136,6 +1136,11 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
             )
         }
 
+        // The session block below anchors to the title's stable x: where the
+        // title sits without the transient unread badge / spinner. The badge
+        // then lands in the gutter column above the balls and ordinals instead
+        // of shoving the whole block sideways every time it appears.
+        var stableTitleX = leading
         let leadingSlotActive = (!leadingBadge.isHidden) || (leadingSpinner?.isHidden == false)
         if leadingSlotActive {
             let side = !leadingBadge.isHidden ? badgeSide : spinnerSide
@@ -1151,16 +1156,19 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
             let side = model.scaled(9) + 4
             place(pinImageView, size: NSSize(width: side, height: side), centerY: firstLineCenter)
             x += side + titleRowSpacing
+            stableTitleX += side + titleRowSpacing
         }
         for view in [mediaAudioView, mediaMicView, mediaCameraView] where !view.isHidden {
             let side = model.scaled(9) + 4
             place(view, size: NSSize(width: side, height: side), centerY: firstLineCenter)
             x += side + titleRowSpacing
+            stableTitleX += side + titleRowSpacing
         }
         if !statusGlyphButton.isHidden {
             let glyphSize = SidebarRowTaskStatusGlyphButton.occupiedSize(fontScale: model.fontScale)
             place(statusGlyphButton, size: glyphSize, centerY: firstLineCenter)
             x += glyphSize.width + titleRowSpacing
+            stableTitleX += glyphSize.width + titleRowSpacing
         }
 
         // Trailing slot
@@ -1204,7 +1212,7 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
         // description or notification text. Their gutter column starts at the
         // title's x so ordinals and balls line up under the workspace title.
         if !agentSessionsSection.isHidden {
-            agentSessionsSection.titleIndent = x - leading
+            agentSessionsSection.titleIndent = stableTitleX - leading
             let sectionHeight = agentSessionsSection.measuredHeight(width: contentWidth)
             if sectionHeight > 0 {
                 y += spacing

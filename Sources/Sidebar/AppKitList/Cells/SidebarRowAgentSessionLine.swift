@@ -14,7 +14,7 @@ final class SidebarRowAgentSessionLine: NSControl {
     var onClick: (() -> Void)?
 
     static let ballSide: CGFloat = 7
-    private static let gutterGap: CGFloat = 6
+    private static let gutterGap: CGFloat = 4
     private static let ageGap: CGFloat = 6
     private static let promptSpacing: CGFloat = 1
 
@@ -88,11 +88,13 @@ final class SidebarRowAgentSessionLine: NSControl {
         return ceil(widest) + 2
     }
 
-    /// The leading gutter is sized for a two-digit ordinal (and never narrower
-    /// than the ball), so titles align across lines and never move when a ball
-    /// replaces the number.
-    static func gutterWidth(numberFont: NSFont) -> CGFloat {
-        let cell = NSTextFieldCell(textCell: "88")
+    /// The leading gutter is sized for the workspace's widest ordinal (and
+    /// never narrower than the ball), so titles align across the workspace's
+    /// lines and never move when a ball replaces a number — while a typical
+    /// single-digit workspace stays tight.
+    static func gutterWidth(numberFont: NSFont, maxOrdinal: Int) -> CGFloat {
+        let widestDigits = String(repeating: "8", count: max(1, String(maxOrdinal).count))
+        let cell = NSTextFieldCell(textCell: widestDigits)
         cell.font = numberFont
         cell.lineBreakMode = .byClipping
         return max(ceil(cell.cellSize.width), ballSide) + gutterGap
@@ -101,7 +103,8 @@ final class SidebarRowAgentSessionLine: NSControl {
     func configure(
         _ display: SidebarRowAgentSessionDisplay,
         model: SidebarWorkspaceRowModel,
-        palette: SidebarRowPalette
+        palette: SidebarRowPalette,
+        maxOrdinal: Int
     ) {
         titleFont = .systemFont(ofSize: model.scaled(10.5), weight: .medium)
         let ageFont = NSFont.monospacedDigitSystemFont(ofSize: model.scaled(9.5), weight: .regular)
@@ -118,7 +121,8 @@ final class SidebarRowAgentSessionLine: NSControl {
         numberView.stringValue = String(display.ordinal)
         numberView.font = ageFont
         numberView.textColor = palette.secondary(0.62, inactiveOpacity: 0.7)
-        gutterWidth = Self.gutterWidth(numberFont: ageFont)
+        numberView.alignment = .center
+        gutterWidth = Self.gutterWidth(numberFont: ageFont, maxOrdinal: maxOrdinal)
         titleView.stringValue = display.title
         titleView.font = titleFont
         titleView.textColor = display.state == .running
@@ -199,9 +203,10 @@ final class SidebarRowAgentSessionLine: NSControl {
         let titleHeight = titleView.measuredHeight(width: titleWidth)
         let firstLineHeight = ceil(titleFont.ascender - titleFont.descender + titleFont.leading)
         let firstLineCenter = firstLineHeight / 2
+        let gutterContentWidth = max(0, gutterWidth - Self.gutterGap)
         if showsBall {
             ballView.frame = NSRect(
-                x: 0, y: firstLineCenter - Self.ballSide / 2,
+                x: (gutterContentWidth - Self.ballSide) / 2, y: firstLineCenter - Self.ballSide / 2,
                 width: Self.ballSide, height: Self.ballSide
             )
         }
@@ -209,7 +214,7 @@ final class SidebarRowAgentSessionLine: NSControl {
             let numberHeight = numberView.sidebarNaturalCellSize.height
             numberView.frame = NSRect(
                 x: 0, y: firstLineCenter - numberHeight / 2,
-                width: max(0, gutterWidth - Self.gutterGap), height: numberHeight
+                width: gutterContentWidth, height: numberHeight
             )
         }
         let titleX = titleInset

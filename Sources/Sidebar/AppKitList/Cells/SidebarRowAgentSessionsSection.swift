@@ -75,7 +75,7 @@ final class SidebarRowAgentSessionsSection: NSView {
             }
             let row = rows[index]
             line.isHidden = false
-            line.configure(row, model: model, palette: palette)
+            line.configure(row, model: model, palette: palette, maxOrdinal: rows.count)
             let panelId = row.panelId
             line.onClick = { [weak self] in self?.onFocusSession?(panelId) }
         }

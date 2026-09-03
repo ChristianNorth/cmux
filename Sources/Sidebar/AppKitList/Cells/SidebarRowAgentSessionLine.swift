@@ -2,25 +2,29 @@ import AppKit
 
 /// One agent session line inside a sidebar workspace row.
 ///
-/// State lives in the title color (plain = idle, blue = running); the only
-/// leading ball is red for needs-input or blue for an unread finished
-/// session. The fixed-width age column carries an orange recency marker for
-/// the three sessions the user most recently typed into. Owns its click
-/// (swallowed from the table row action) and focuses the session's pane.
+/// Every line leads with a fixed gutter carrying the session's ordinal
+/// (1..N within the workspace); an attention ball — red for needs-input,
+/// blue for an unread finished session — takes the ordinal's place, so the
+/// title column never moves. State lives in the title color (plain = idle,
+/// blue = running). The fixed-width age column carries an orange recency
+/// marker for the three sessions the user most recently typed into. Owns its
+/// click (swallowed from the table row action) and focuses the session's pane.
 @MainActor
 final class SidebarRowAgentSessionLine: NSControl {
     var onClick: (() -> Void)?
 
     static let ballSide: CGFloat = 7
-    private static let ballGap: CGFloat = 6
+    private static let gutterGap: CGFloat = 6
     private static let ageGap: CGFloat = 6
     private static let promptSpacing: CGFloat = 1
 
     private let ballView = NSView()
+    private let numberView = SidebarRowTextView(lines: 1)
     private let titleView = SidebarRowTextView(lines: 2)
     private let ageView = SidebarRowTextView(lines: 1)
     private let promptView = SidebarRowTextView(lines: 1)
     private var ageColumnWidth: CGFloat = 0
+    private var gutterWidth: CGFloat = 0
     private var showsBall = false
     private var titleFont: NSFont = .systemFont(ofSize: 10.5)
 
@@ -32,6 +36,8 @@ final class SidebarRowAgentSessionLine: NSControl {
         ballView.layer?.cornerRadius = Self.ballSide / 2
         ballView.isHidden = true
         addSubview(ballView)
+        numberView.lineBreakMode = .byClipping
+        addSubview(numberView)
         addSubview(titleView)
         ageView.alignment = .right
         ageView.lineBreakMode = .byClipping
@@ -82,6 +88,16 @@ final class SidebarRowAgentSessionLine: NSControl {
         return ceil(widest) + 2
     }
 
+    /// The leading gutter is sized for a two-digit ordinal (and never narrower
+    /// than the ball), so titles align across lines and never move when a ball
+    /// replaces the number.
+    static func gutterWidth(numberFont: NSFont) -> CGFloat {
+        let cell = NSTextFieldCell(textCell: "88")
+        cell.font = numberFont
+        cell.lineBreakMode = .byClipping
+        return max(ceil(cell.cellSize.width), ballSide) + gutterGap
+    }
+
     func configure(
         _ display: SidebarRowAgentSessionDisplay,
         model: SidebarWorkspaceRowModel,
@@ -98,6 +114,11 @@ final class SidebarRowAgentSessionLine: NSControl {
                 colorSchemeIsDark: model.colorSchemeIsDark
             ).cgColor
         }
+        numberView.isHidden = showsBall
+        numberView.stringValue = String(display.ordinal)
+        numberView.font = ageFont
+        numberView.textColor = palette.secondary(0.62, inactiveOpacity: 0.7)
+        gutterWidth = Self.gutterWidth(numberFont: ageFont)
         titleView.stringValue = display.title
         titleView.font = titleFont
         titleView.textColor = display.state == .running
@@ -137,6 +158,10 @@ final class SidebarRowAgentSessionLine: NSControl {
     /// unread) is visible.
     var hasVisibleBall: Bool { !ballView.isHidden }
 
+    /// Test seam: the ordinal shown in the leading gutter, nil while a ball
+    /// takes its place.
+    var numberDisplayText: String? { numberView.isHidden ? nil : numberView.stringValue }
+
     /// Test seam: the rendered age text including any recency marker.
     var ageDisplayText: String { ageView.attributedStringValue.string }
 
@@ -144,6 +169,8 @@ final class SidebarRowAgentSessionLine: NSControl {
         onClick = nil
         toolTip = nil
         titleView.stringValue = ""
+        numberView.stringValue = ""
+        numberView.isHidden = true
         ageView.stringValue = ""
         promptView.stringValue = ""
         promptView.isHidden = true
@@ -152,9 +179,7 @@ final class SidebarRowAgentSessionLine: NSControl {
         alphaValue = 1
     }
 
-    private var titleInset: CGFloat {
-        showsBall ? Self.ballSide + Self.ballGap : 0
-    }
+    private var titleInset: CGFloat { gutterWidth }
 
     private var titleWidth: CGFloat {
         max(10, bounds.width - titleInset - ageColumnWidth - Self.ageGap)
@@ -178,6 +203,13 @@ final class SidebarRowAgentSessionLine: NSControl {
             ballView.frame = NSRect(
                 x: 0, y: firstLineCenter - Self.ballSide / 2,
                 width: Self.ballSide, height: Self.ballSide
+            )
+        }
+        if !numberView.isHidden {
+            let numberHeight = numberView.sidebarNaturalCellSize.height
+            numberView.frame = NSRect(
+                x: 0, y: firstLineCenter - numberHeight / 2,
+                width: max(0, gutterWidth - Self.gutterGap), height: numberHeight
             )
         }
         let titleX = titleInset

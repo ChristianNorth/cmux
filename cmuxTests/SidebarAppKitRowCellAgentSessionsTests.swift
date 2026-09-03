@@ -16,6 +16,7 @@ import Testing
 struct SidebarAppKitRowCellAgentSessionsTests {
     private static func display(
         panelId: UUID = UUID(),
+        ordinal: Int = 1,
         title: String = "Fix the login bug",
         state: SidebarAgentSessionSnapshot.State = .running,
         ageText: String = "12m",
@@ -26,6 +27,7 @@ struct SidebarAppKitRowCellAgentSessionsTests {
     ) -> SidebarRowAgentSessionDisplay {
         SidebarRowAgentSessionDisplay(
             panelId: panelId,
+            ordinal: ordinal,
             title: title,
             state: state,
             ageText: ageText,
@@ -194,10 +196,10 @@ struct SidebarAppKitRowCellAgentSessionsTests {
 
     @Test func stateLivesInTheTitleColorAndBallsMarkAttention() throws {
         let model = Self.makeModel(rows: [
-            Self.display(title: "Running one", state: .running),
-            Self.display(title: "Idle one", state: .idle),
-            Self.display(title: "Blocked one", state: .needsInput),
-            Self.display(title: "Unread one", state: .idle, showsUnreadBall: true),
+            Self.display(ordinal: 1, title: "Running one", state: .running),
+            Self.display(ordinal: 2, title: "Idle one", state: .idle),
+            Self.display(ordinal: 3, title: "Blocked one", state: .needsInput),
+            Self.display(ordinal: 4, title: "Unread one", state: .idle, showsUnreadBall: true),
         ])
         let cell = Self.configuredCell(model: model)
         let lines = Self.sessionLines(in: cell)
@@ -214,6 +216,10 @@ struct SidebarAppKitRowCellAgentSessionsTests {
         #expect(!lines[1].hasVisibleBall)
         #expect(lines[2].hasVisibleBall)
         #expect(lines[3].hasVisibleBall)
+        #expect(lines[0].numberDisplayText == "1")
+        #expect(lines[1].numberDisplayText == "2")
+        #expect(lines[2].numberDisplayText == nil)
+        #expect(lines[3].numberDisplayText == nil)
     }
 
     @Test func recencyMarkersAppendToTheAgeColumn() {

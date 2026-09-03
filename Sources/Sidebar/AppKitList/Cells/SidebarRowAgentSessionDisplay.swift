@@ -14,6 +14,9 @@ struct SidebarRowAgentSessionDisplay: Equatable, Identifiable {
 
     let panelId: UUID
     var id: UUID { panelId }
+    /// 1-based position within the workspace's session list; the leading
+    /// gutter shows it unless an attention ball takes its place.
+    var ordinal: Int = 1
     let title: String
     let state: SidebarAgentSessionSnapshot.State
     /// "12m"; the marker glyph is appended by the line view in its own color.
@@ -53,7 +56,7 @@ struct SidebarRowAgentSessionPresenter {
     ///   prompt line shows for every session of the selected workspace and for
     ///   the most recently typed-into session anywhere.
     func rows(for sessions: [SidebarAgentSessionSnapshot], isActive: Bool) -> [SidebarRowAgentSessionDisplay] {
-        sessions.map { session in
+        sessions.enumerated().map { index, session in
             let rank = lastTypedPanelIds.firstIndex(of: session.panelId)
             let prompt = session.lastPrompt?.trimmingCharacters(in: .whitespacesAndNewlines)
             let promptLine: String? = {
@@ -73,6 +76,7 @@ struct SidebarRowAgentSessionPresenter {
             let showsUnreadBall = session.state == .idle && unreadPanelIds.contains(session.panelId)
             return SidebarRowAgentSessionDisplay(
                 panelId: session.panelId,
+                ordinal: index + 1,
                 title: session.title,
                 state: session.state,
                 ageText: formatter.text(from: session.lastActivityMinute, now: now),

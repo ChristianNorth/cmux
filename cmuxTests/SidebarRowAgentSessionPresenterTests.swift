@@ -71,6 +71,12 @@ struct SidebarRowAgentSessionPresenterTests {
         #expect(rows[0].promptLine == "↳ fix the login bug")
     }
 
+    @Test func ordinalsCountFromOneInSessionOrder() {
+        let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [])
+            .rows(for: [session(), session(), session()], isActive: false)
+        #expect(rows.map(\.ordinal) == [1, 2, 3])
+    }
+
     @Test func recencyRanksFollowTheLastTypedOrder() {
         let first = UUID(), second = UUID(), third = UUID(), other = UUID()
         let rows = SidebarRowAgentSessionPresenter(now: now, lastTypedPanelIds: [first, second, third])

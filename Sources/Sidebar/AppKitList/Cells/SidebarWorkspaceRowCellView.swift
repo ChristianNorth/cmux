@@ -1201,8 +1201,10 @@ final class SidebarWorkspaceRowTableCellView: NSTableCellView {
         y += max(titleHeight, leadingSlotActive ? badgeSide : 0)
 
         // Agent session lines sit directly under the title, before any
-        // description or notification text.
+        // description or notification text. Their gutter column starts at the
+        // title's x so ordinals and balls line up under the workspace title.
         if !agentSessionsSection.isHidden {
+            agentSessionsSection.titleIndent = x - leading
             let sectionHeight = agentSessionsSection.measuredHeight(width: contentWidth)
             if sectionHeight > 0 {
                 y += spacing

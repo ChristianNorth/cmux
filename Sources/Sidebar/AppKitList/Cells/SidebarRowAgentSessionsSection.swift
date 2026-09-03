@@ -10,6 +10,14 @@ final class SidebarRowAgentSessionsSection: NSView {
 
     static let lineSpacing: CGFloat = 3
 
+    /// Left offset of every line so the gutter (ordinal or ball) starts at
+    /// the workspace title's x, past any leading badge or glyph. Set by the
+    /// host cell's layoutContent, which is the only place that knows the
+    /// title's position.
+    var titleIndent: CGFloat = 0 {
+        didSet { if oldValue != titleIndent { needsLayout = true } }
+    }
+
     private var lines: [SidebarRowAgentSessionLine] = []
     private var rows: [SidebarRowAgentSessionDisplay] = []
 
@@ -88,21 +96,23 @@ final class SidebarRowAgentSessionsSection: NSView {
     /// focus, or hover so the prototype cell measures the live cell's height.
     func measuredHeight(width: CGFloat) -> CGFloat {
         guard !isHidden, !rows.isEmpty else { return 0 }
+        let lineWidth = max(10, width - titleIndent)
         var height: CGFloat = 0
         for (index, line) in lines.enumerated() where index < rows.count {
             if index > 0 { height += Self.lineSpacing }
-            height += line.measuredHeight(width: width)
+            height += line.measuredHeight(width: lineWidth)
         }
         return height
     }
 
     override func layout() {
         super.layout()
+        let lineWidth = max(10, bounds.width - titleIndent)
         var y: CGFloat = 0
         for (index, line) in lines.enumerated() where index < rows.count {
             if index > 0 { y += Self.lineSpacing }
-            let height = line.measuredHeight(width: bounds.width)
-            line.frame = NSRect(x: 0, y: y, width: bounds.width, height: height)
+            let height = line.measuredHeight(width: lineWidth)
+            line.frame = NSRect(x: titleIndent, y: y, width: lineWidth, height: height)
             y += height
         }
     }

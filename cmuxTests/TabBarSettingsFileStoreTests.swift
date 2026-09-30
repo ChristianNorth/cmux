@@ -9,6 +9,10 @@ import Testing
 @testable import cmux
 #endif
 
+// Main actor: the test host app's own settings store reapplies its managed
+// defaults on the main queue when UserDefaults change, so an off-main test
+// can lose the values this store just wrote before it reads them.
+@MainActor
 @Suite("Tab bar settings file", .serialized)
 struct TabBarSettingsFileStoreTests {
     private let settingsFileBackupsDefaultsKey = "cmux.settingsFile.backups.v1"
@@ -36,7 +40,7 @@ struct TabBarSettingsFileStoreTests {
     func settingsFileClampsMaxWidthAndIgnoresUnknownModes() throws {
         try loadTabBarSection(#"{ "widthMode": "stretchy", "tabMaxWidth": 5000 }"#) { defaults in
             #expect(TabBarSettings.widthMode(defaults: defaults) == .fill)
-            #expect(TabBarSettings.tabMaxWidth(defaults: defaults) == TabBarCatalogSection.tabMaxWidthMaximum)
+            #expect(Double(TabBarSettings.tabMaxWidth(defaults: defaults)) == TabBarCatalogSection.tabMaxWidthMaximum)
         }
     }
 

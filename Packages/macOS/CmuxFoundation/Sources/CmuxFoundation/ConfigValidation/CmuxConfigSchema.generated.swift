@@ -1427,6 +1427,11 @@ enum CmuxEmbeddedConfigSchema {
           "default": true,
           "description": "Show the loading spinner on workspaces with running coding agents or active loaders."
         },
+        "showAgentSessions": {
+          "type": "boolean",
+          "default": true,
+          "description": "List each workspace's live coding-agent sessions under its title: the agent's own title (blue while running), an age with orange recency markers, attention balls (red needs-input, blue unread), and (for the selected workspace and the session you last typed into) your last prompt."
+        },
         "loadingSpinnerPosition": {
           "type": "string",
           "enum": ["leading", "trailing"],
@@ -1871,6 +1876,27 @@ enum CmuxEmbeddedConfigSchema {
         }
       }
     },
+    "tabBar": {
+      "title": "tabBar",
+      "description": "Pane tab strip settings.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "widthMode": {
+          "type": "string",
+          "enum": ["fill", "fixed"],
+          "default": "fill",
+          "description": "fill stretches tabs across the pane's free width (one tab spans the whole bar, many tabs share it and then scroll); fixed keeps every tab at its natural width and scrolls the strip."
+        },
+        "tabMaxWidth": {
+          "type": "number",
+          "minimum": 100,
+          "maximum": 1000,
+          "default": 360,
+          "description": "The widest a tab may grow, in points, before its title truncates."
+        }
+      }
+    },
     "markdown": {
       "x-cmux-scopes": ["global"],
       "title": "markdown",
@@ -2055,6 +2081,7 @@ enum CmuxEmbeddedConfigSchema {
               "sendFeedback",
               "showNotifications",
               "jumpToUnread",
+              "jumpToLastPrompt",
               "toggleUnread",
               "markOldestUnreadAndJumpNext",
               "markAllNotificationsRead",

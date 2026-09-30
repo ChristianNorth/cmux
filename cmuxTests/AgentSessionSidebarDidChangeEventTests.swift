@@ -1,5 +1,6 @@
 import CMUXAgentLaunch
 import CmuxAgentChat
+@testable import CmuxMobileHost
 import Foundation
 import Testing
 
@@ -7,7 +8,6 @@ import Testing
 @testable import cmux_DEV
 #elseif canImport(cmux)
 @testable import cmux
-import CmuxMobileHost
 #endif
 
 struct AgentSessionSidebarDidChangeEventTests {

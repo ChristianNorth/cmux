@@ -5,6 +5,9 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
         let title: String
         let customDescription: String?
         let isPinned: Bool
+        let isMuted: Bool
+        let cloudWorkspaceLabel: String?
+        let deviceWorkspaceLabel: String?
         let customColorHex: String?
         let finderDirectoryPath: String?
         let mediaActivity: BrowserMediaActivity
@@ -17,6 +20,8 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
         let checklistFirstUncheckedText: String?
         let activeCodingAgentCount: Int
         let agentSessions: [SidebarAgentSessionSnapshot]
+        let compactStatusGlyph: SidebarCompactStatusGlyph?
+        let taskStatusInput: SidebarWorkspaceTaskStatusSnapshot
     }
 
     var contextMenuImmediateFields: ContextMenuImmediateFields {
@@ -24,6 +29,9 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             title: title,
             customDescription: customDescription,
             isPinned: isPinned,
+            isMuted: isMuted,
+            cloudWorkspaceLabel: cloudWorkspaceLabel,
+            deviceWorkspaceLabel: deviceWorkspaceLabel,
             customColorHex: customColorHex,
             finderDirectoryPath: finderDirectoryPath,
             mediaActivity: mediaActivity,
@@ -35,7 +43,9 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             checklistTotalCount: checklistTotalCount,
             checklistFirstUncheckedText: checklistFirstUncheckedText,
             activeCodingAgentCount: activeCodingAgentCount,
-            agentSessions: agentSessions
+            agentSessions: agentSessions,
+            compactStatusGlyph: compactStatusGlyph,
+            taskStatusInput: taskStatusInput
         )
     }
 
@@ -46,7 +56,9 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             title: snapshot.title,
             customDescription: snapshot.customDescription,
             isPinned: snapshot.isPinned,
+            isMuted: snapshot.isMuted,
             customColorHex: snapshot.customColorHex,
+            cloudWorkspaceLabel: snapshot.cloudWorkspaceLabel,
             remoteWorkspaceSidebarText: remoteWorkspaceSidebarText,
             remoteConnectionStatusText: remoteConnectionStatusText,
             remoteStateHelpText: remoteStateHelpText,
@@ -83,7 +95,12 @@ extension SidebarWorkspaceSnapshotBuilder.Snapshot {
             checklistFirstUncheckedText: snapshot.checklistFirstUncheckedText,
             // Agent session rows are live status like the spinner: a session
             // finishing or asking for input must show while the menu is open.
-            agentSessions: snapshot.agentSessions
+            agentSessions: snapshot.agentSessions,
+            taskStatusInput: snapshot.taskStatusInput,
+            deviceWorkspaceLabel: snapshot.deviceWorkspaceLabel,
+            // The status glyph is resolved against the spinner state, so it
+            // updates with the spinner while the menu is open.
+            compactStatusGlyph: snapshot.compactStatusGlyph
         )
     }
 }

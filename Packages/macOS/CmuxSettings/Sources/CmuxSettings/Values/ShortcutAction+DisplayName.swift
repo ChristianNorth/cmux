@@ -5,6 +5,8 @@ extension ShortcutAction {
     public var displayName: String {
         switch self {
         case .openSettings: return "Settings…"
+        case .openTeamPicker:
+            return String(localized: "shortcut.openTeamPicker.label", defaultValue: "Open Team Picker")
         case .reloadConfiguration: return "Reload Configuration"
         case .showHideAllWindows: return "Show/Hide All Windows"
         case .globalSearch: return "Global Search"
@@ -16,6 +18,10 @@ extension ShortcutAction {
         case .newTab: return "New Workspace"
         case .newBrowserWorkspace:
             return String(localized: "shortcut.newBrowserWorkspace.label", defaultValue: "New Browser Workspace")
+        case .newCloudWorkspace:
+            return String(localized: "shortcut.newCloudWorkspace.label", defaultValue: "New Cloud Workspace")
+        case .newCloudMachine:
+            return String(localized: "shortcut.newCloudMachine.label", defaultValue: "New Cloud Machine")
         case .saveLayoutTemplate:
             return String(localized: "shortcut.saveLayoutTemplate.label", defaultValue: "Save Layout as Template…")
         case .openFolder: return "Open Folder"
@@ -69,6 +75,8 @@ extension ShortcutAction {
         case .moveWorkspaceDown: return String(localized: "shortcut.moveWorkspaceDown.label", defaultValue: "Move Workspace Down")
         case .focusHistoryBack: return "Focus Back"
         case .focusHistoryForward: return "Focus Forward"
+        case .focusHistoryLast:
+            return String(localized: "shortcut.focusHistoryLast.label", defaultValue: "Focus Last")
         case .selectWorkspaceByNumber: return "Select Workspace 1…9"
         case .renameTab: return "Rename Tab"
         case .renameWorkspace: return "Rename Workspace"
@@ -97,6 +105,8 @@ extension ShortcutAction {
         case .attachTextBoxFile: return "Attach File to TextBox Input"
         case .sendCtrlFToTerminal:
             return String(localized: "shortcut.sendCtrlFToTerminal.label", defaultValue: "Send Ctrl-F to Terminal")
+        case .pasteLastScreenshot:
+            return String(localized: "shortcut.pasteLastScreenshot.label", defaultValue: "Paste Last Screenshot")
         case .clearScreenKeepScrollback:
             return String(localized: "shortcut.clearScreenKeepScrollback.label", defaultValue: "Clear Screen (Keep Scrollback)")
         case .focusLeft: return "Focus Pane Left"
@@ -109,6 +119,8 @@ extension ShortcutAction {
             return String(localized: "shortcut.focusNextPane.label", defaultValue: "Focus Next Pane")
         case .splitRight: return "Split Right"
         case .splitDown: return "Split Down"
+        case .newPaneAutoLayout:
+            return String(localized: "shortcut.newPaneAutoLayout.label", defaultValue: "New Pane (Auto Layout)")
         case .toggleSplitZoom: return "Toggle Pane Zoom"
         case .increaseWorkspaceTerminalFontSize:
             return String(
@@ -126,6 +138,10 @@ extension ShortcutAction {
                 defaultValue: "Reset Font Size for Workspace Terminals"
             )
         case .equalizeSplits: return "Equalize Splits"
+        case .resizePaneLeft: return String(localized: "shortcut.resizePaneLeft.label", defaultValue: "Resize Pane Left")
+        case .resizePaneRight: return String(localized: "shortcut.resizePaneRight.label", defaultValue: "Resize Pane Right")
+        case .resizePaneUp: return String(localized: "shortcut.resizePaneUp.label", defaultValue: "Resize Pane Up")
+        case .resizePaneDown: return String(localized: "shortcut.resizePaneDown.label", defaultValue: "Resize Pane Down")
         case .splitBrowserRight: return "Split Browser Right"
         case .splitBrowserDown: return "Split Browser Down"
         case .toggleRightSidebar: return "Toggle Right Sidebar"
@@ -165,6 +181,8 @@ extension ShortcutAction {
             return String(localized: "shortcut.canvasDistributeVertically.label", defaultValue: "Canvas: Distribute Vertically")
         case .openDiffViewer: return "Open Diff Viewer"
         case .saveFilePreview: return "Save File Preview"
+        case .toggleFileEditorWordWrap:
+            return String(localized: "shortcut.toggleFileEditorWordWrap.label", defaultValue: "Toggle File Editor Word Wrap")
         case .openBrowser: return "Open Browser"
         case .focusBrowserAddressBar: return "Focus Address Bar"
         case .browserBack: return "Back"

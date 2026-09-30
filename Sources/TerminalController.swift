@@ -2036,6 +2036,35 @@ class TerminalController {
                 ])
             }
 #endif
+#if DEBUG
+        case "debug.global_search.query":
+            // Refreshes the live index like opening the palette, then runs the
+            // palette's query, so scripts can check vibe search ranking.
+            let query = (request.params["query"] as? String) ?? ""
+            let semaphore = DispatchSemaphore(value: 0)
+            nonisolated(unsafe) var rows: [[String: Any]] = []
+            Task { @MainActor in
+                let coordinator = GlobalSearchCoordinator.shared
+                await coordinator.refreshLiveIndex()
+                let started = ContinuousClock.now
+                let hits = await coordinator.search(query: query)
+                let elapsed = ContinuousClock.now - started
+                rows = hits.map { hit in
+                    [
+                        "kind": hit.kind.rawValue,
+                        "title": hit.title,
+                        "location": hit.location,
+                        "snippet": hit.snippet,
+                        "panel_id": hit.panelID?.uuidString ?? "",
+                        "search_ms": Double(elapsed.components.attoseconds) / 1e15
+                            + Double(elapsed.components.seconds) * 1000,
+                    ]
+                }
+                semaphore.signal()
+            }
+            semaphore.wait()
+            return v2Ok(id: request.id, result: ["hits": rows])
+#endif
         case "current.list":
             return socketWorkerCurrentWorkResponse(id: request.id, params: request.params)
         case "surface.catalog", "surface.project", "surface.new_terminal":
@@ -2055,6 +2084,7 @@ class TerminalController {
             // answers method_not_found for debug verbs, so mirror that reply
             // instead of the internal-error backstop below.
             if request.method == "debug.sidebar.simulate_drag"
+                || request.method == "debug.global_search.query"
                 || request.method == "debug.window.screenshot"
                 || request.method == "debug.mobile.transport.disconnect"
                 || request.method == "debug.cloudtree.gallery" {

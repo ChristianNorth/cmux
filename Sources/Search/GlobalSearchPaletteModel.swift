@@ -35,7 +35,10 @@ final class GlobalSearchPaletteModel: ObservableObject {
     private let searchDebounceScheduler = MainActorDeferredActionScheduler()
     private let tasks = MainActorTaskStore<String>()
 
-    init(client: Client, searchDebounceDelay: Duration = .milliseconds(80)) {
+    /// Searches run on every keystroke: ranking takes milliseconds now that
+    /// snippets are built for the final rows only, and a delay here is the
+    /// one lag the user would feel.
+    init(client: Client, searchDebounceDelay: Duration = .zero) {
         self.client = client
         self.searchDebounceDelay = searchDebounceDelay
     }
@@ -187,6 +190,8 @@ struct GlobalSearchResultRow: Identifiable, Equatable {
 
     var systemImageName: String {
         switch hit.kind {
+        case .agentSession:
+            return "sparkles"
         case .browser:
             return "globe"
         case .markdown:

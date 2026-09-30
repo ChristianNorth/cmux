@@ -2,6 +2,7 @@ import Foundation
 import SQLite3
 
 enum GlobalSearchKind: String, Codable, Sendable {
+    case agentSession
     case browser
     case markdown
     case terminal
@@ -9,6 +10,8 @@ enum GlobalSearchKind: String, Codable, Sendable {
 
     var localizedLabel: String {
         switch self {
+        case .agentSession:
+            return String(localized: "globalSearch.kind.agentSession", defaultValue: "Agent Session")
         case .browser:
             return String(localized: "globalSearch.kind.browser", defaultValue: "Browser")
         case .markdown:
@@ -82,6 +85,24 @@ struct SearchIndexHit: Identifiable, Sendable, Equatable {
     let snippet: String
     let rank: Double
     let timestamp: Date
+}
+
+extension SearchIndexHit {
+    func withSnippet(_ snippet: String) -> SearchIndexHit {
+        SearchIndexHit(
+            id: id,
+            windowID: windowID,
+            workspaceID: workspaceID,
+            panelID: panelID,
+            kind: kind,
+            title: title,
+            location: location,
+            anchor: anchor,
+            snippet: snippet,
+            rank: rank,
+            timestamp: timestamp
+        )
+    }
 }
 
 enum SearchIndexError: LocalizedError {
@@ -202,11 +223,57 @@ actor SearchIndex {
         try execute("DELETE FROM chunks")
     }
 
+    /// Column weights for `bm25()`: title, location, text. A word in a short,
+    /// descriptive field (a session or page title, the workspace name) is
+    /// stronger evidence than one mention in a 400k-character body.
+    static let rankColumnWeights = (title: 10.0, location: 5.0, text: 1.0)
+    /// Candidates ranked per requested row; a panel holds at most a title
+    /// document and one content document, so this leaves room to collapse.
+    static let candidatesPerResult = 3
+
+    /// Ranks documents, keeps one row per panel, and builds each row's snippet.
+    ///
+    /// Ranking runs without FTS5 `snippet()`, which dominated query time on
+    /// large documents; `GlobalSearchSnippet` builds excerpts for the final
+    /// rows only.
     func search(_ rawQuery: String, limit: Int = 20) throws -> [SearchIndexHit] {
         let trimmed = rawQuery.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, limit > 0 else { return [] }
         guard let matchQuery = Self.matchQuery(for: trimmed) else { return [] }
 
+        let candidates = try rankedCandidates(matchQuery: matchQuery, limit: limit * Self.candidatesPerResult)
+        let rows = Self.onePerPanel(candidates, limit: limit)
+        let tokens = Self.queryTokens(for: trimmed)
+        return try rows.map { row in
+            let text = try storedText(documentID: row.id) ?? ""
+            return row.withSnippet(GlobalSearchSnippet.excerpt(text: text, tokens: tokens))
+        }
+    }
+
+    /// Collapses ranked hits to one row per panel, in best-rank order.
+    ///
+    /// A panel's row is its best content hit (session, page, file, scrollback);
+    /// its title document represents it only when no content document matched.
+    /// Hits without a panel stay separate rows.
+    static func onePerPanel(_ hits: [SearchIndexHit], limit: Int) -> [SearchIndexHit] {
+        var order: [String] = []
+        var rowByKey: [String: SearchIndexHit] = [:]
+        for hit in hits {
+            let key = hit.panelID.map { "panel:\($0.uuidString)" } ?? "document:\(hit.id)"
+            if let current = rowByKey[key] {
+                if current.kind == .title, hit.kind != .title {
+                    rowByKey[key] = hit
+                }
+            } else {
+                order.append(key)
+                rowByKey[key] = hit
+            }
+        }
+        return order.prefix(limit).compactMap { rowByKey[$0] }
+    }
+
+    private func rankedCandidates(matchQuery: String, limit: Int) throws -> [SearchIndexHit] {
+        let weights = Self.rankColumnWeights
         let sql = """
             SELECT
                 c.id,
@@ -218,8 +285,7 @@ actor SearchIndex {
                 c.location,
                 c.anchor,
                 c.ts,
-                snippet(chunks_fts, 2, '', '', '...', 14) AS snippet,
-                bm25(chunks_fts) AS rank
+                bm25(chunks_fts, \(weights.title), \(weights.location), \(weights.text)) AS rank
             FROM chunks_fts
             JOIN chunks c ON c.rowid = chunks_fts.rowid
             WHERE chunks_fts MATCH ?1
@@ -248,6 +314,20 @@ actor SearchIndex {
                 default:
                     throw SearchIndexError.stepFailed(Self.sqliteMessage(database) ?? "step failed with code \(stepResult)")
                 }
+            }
+        }
+    }
+
+    private func storedText(documentID: String) throws -> String? {
+        try withStatement("SELECT text FROM chunks WHERE id = ?1") { statement in
+            try bind(documentID, at: 1, in: statement)
+            switch sqlite3_step(statement) {
+            case SQLITE_ROW:
+                return Self.sqliteText(statement, 0)
+            case SQLITE_DONE:
+                return nil
+            default:
+                throw SearchIndexError.stepFailed(Self.sqliteMessage(database) ?? "text lookup failed")
             }
         }
     }
@@ -423,8 +503,7 @@ actor SearchIndex {
         let location = sqliteText(statement, 6) ?? ""
         let anchor = sqliteText(statement, 7) ?? ""
         let timestamp = Date(timeIntervalSince1970: sqlite3_column_double(statement, 8))
-        let snippet = sqliteText(statement, 9) ?? title
-        let rank = sqlite3_column_double(statement, 10)
+        let rank = sqlite3_column_double(statement, 9)
 
         return SearchIndexHit(
             id: id,
@@ -435,7 +514,7 @@ actor SearchIndex {
             title: title,
             location: location,
             anchor: anchor,
-            snippet: snippet,
+            snippet: "",
             rank: rank,
             timestamp: timestamp
         )

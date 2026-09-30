@@ -117,7 +117,50 @@ enum GlobalSearchDocuments {
         )
     }
 
-    static func cappedText(_ text: String) -> String {
+    /// A live agent session's transcript, indexed in place of the pane's
+    /// scrollback. The title is the name the sidebar shows for the session.
+    static func agentSessionDocument(
+        for context: GlobalSearchPanelContext,
+        source: AgentSessionSearchSource,
+        transcriptText: String
+    ) -> SearchIndexDocument {
+        agentSessionDocument(
+            windowID: context.windowID,
+            workspaceID: context.workspaceID,
+            panelID: context.panelID,
+            location: context.location,
+            source: source,
+            transcriptText: transcriptText
+        )
+    }
+
+    nonisolated static func agentSessionDocument(
+        windowID: UUID,
+        workspaceID: UUID,
+        panelID: UUID,
+        location: String,
+        source: AgentSessionSearchSource,
+        transcriptText: String
+    ) -> SearchIndexDocument {
+        let text = cappedText([source.workingDirectory, transcriptText]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: "\n"))
+
+        return SearchIndexDocument(
+            id: SearchIndexDocument.panelStableID(panelID: panelID, kind: .agentSession),
+            windowID: windowID,
+            workspaceID: workspaceID,
+            panelID: panelID,
+            kind: .agentSession,
+            title: source.title,
+            location: location,
+            anchor: source.sessionID,
+            text: text
+        )
+    }
+
+    nonisolated static func cappedText(_ text: String) -> String {
         guard text.count > GlobalSearchIndexingLimits.maxIndexedTextCharacters else { return text }
         let endIndex = text.index(text.startIndex, offsetBy: GlobalSearchIndexingLimits.maxIndexedTextCharacters)
         return String(text[..<endIndex])

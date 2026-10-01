@@ -2,6 +2,9 @@ import CoreImage
 
 /// Removes a pane-local fill from the already-rendered shared window backdrop.
 final class TerminalSharedBackdropCutoutFilter: CIFilter {
+    // Swift synthesizes init(coder:), so this subclass must declare secure coding support.
+    override class var supportsSecureCoding: Bool { true }
+
     private static let filterInputKeys = [kCIInputImageKey, kCIInputBackgroundImageKey]
     private static let filterOutputKeys = [kCIOutputImageKey]
 

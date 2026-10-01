@@ -12,6 +12,22 @@ import Testing
 #endif
 
 struct WindowAppearanceSnapshotPaneBackgroundTests {
+    @Test func sharedBackdropFilterSurvivesSecureArchiveRoundTrip() throws {
+        let filter = TerminalSharedBackdropCutoutFilter()
+        filter.name = "terminalSharedBackdropCutout"
+        let data = try NSKeyedArchiver.archivedData(
+            withRootObject: filter,
+            requiringSecureCoding: true
+        )
+        let restored = try #require(NSKeyedUnarchiver.unarchivedObject(
+            ofClass: TerminalSharedBackdropCutoutFilter.self,
+            from: data
+        ))
+        #expect(restored.inputKeys == filter.inputKeys)
+        #expect(restored.outputKeys == filter.outputKeys)
+        #expect(restored.outputImage == nil)
+    }
+
     /// Verifies late OSC 11 changes reuse a cutout configured before AppKit's first display pass.
     @MainActor
     @Test func lateOSCOverrideUsesPredisplaySharedBackdropCutout() throws {
